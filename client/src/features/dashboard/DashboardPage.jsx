@@ -2,6 +2,7 @@ import { RefreshCw } from 'lucide-react';
 import { Badge, Button, Card, ErrorState, PlaceholderBanner, Skeleton } from '../../components/ui/index.js';
 import { useApiHealth } from '../../lib/useApiHealth.js';
 import { NAV_ITEMS } from '../../lib/navigation.js';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 function StatusRow({ label, loading, tone, text }) {
   return (
@@ -48,11 +49,12 @@ function SystemStatus() {
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const modules = NAV_ITEMS.filter((i) => i.path !== '/dashboard');
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Welcome to CreatorDesk</h2>
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Welcome, {user.name.split(' ')[0]}</h2>
         <p className="mt-1 text-slate-500">Your content and business workspace.</p>
       </div>
 

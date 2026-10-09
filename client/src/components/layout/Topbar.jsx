@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Bell, Menu, Search, UserCircle2 } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Bell, LogOut, Menu, Search, Settings, UserCircle2 } from 'lucide-react';
 import { findNavItem } from '../../lib/navigation.js';
 import { Popover, EmptyState, Modal, Input, Badge } from '../ui/index.js';
+import { useAuth } from '../../features/auth/AuthContext.jsx';
 
 function pageTitle(pathname) {
   if (pathname.startsWith('/design-system')) return 'Design system';
+  if (pathname.startsWith('/settings')) return 'Settings';
   return findNavItem(pathname)?.label ?? 'CreatorDesk';
 }
 
@@ -35,6 +37,7 @@ function NotificationsMenu() {
 }
 
 function ProfileMenu() {
+  const { user, logout } = useAuth();
   return (
     <Popover
       width="w-64"
@@ -49,13 +52,29 @@ function ProfileMenu() {
         </button>
       )}
     >
-      <div className="space-y-2 p-4 text-sm">
-        <div className="flex items-center gap-2">
-          <p className="font-semibold text-slate-900">Not signed in</p>
-          <Badge tone="warning">Placeholder</Badge>
+      {({ close }) => (
+        <div className="text-sm">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <p className="truncate font-semibold text-slate-900">{user.name}</p>
+            <p className="truncate text-slate-500">{user.email}</p>
+          </div>
+          <div className="p-1.5">
+            <Link
+              to="/settings"
+              onClick={close}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-100"
+            >
+              <Settings className="h-4 w-4" aria-hidden /> Profile &amp; settings
+            </Link>
+            <button
+              onClick={logout}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-slate-700 hover:bg-slate-100"
+            >
+              <LogOut className="h-4 w-4" aria-hidden /> Sign out
+            </button>
+          </div>
         </div>
-        <p className="text-slate-500">Accounts, profile and sign-out arrive with the authentication module.</p>
-      </div>
+      )}
     </Popover>
   );
 }
