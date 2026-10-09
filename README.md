@@ -79,6 +79,13 @@ The server refuses to start with an invalid environment and prints which variabl
 | GET / PATCH | `/me` | Signed in (profile: name, timezone, defaultCurrency) |
 | POST | `/me/change-password` | Signed in, rate-limited |
 | GET/POST, GET/PATCH/DELETE `/:id` | `/categories` | Signed in, owner-scoped |
+| GET | `/dashboard` | Signed in; read-only, always the caller's own data |
+
+### Dashboard
+`GET /api/v1/dashboard` returns seven independent sections (content pipeline, upcoming posts, campaigns & deadlines, tasks, pending reviews, payments, recent activity) plus a `definitions` block stating, for every metric, whether it is a **count**, an **amount** (integer minor units, per currency, never summed across currencies) or a **duration**, and the **time period** it covers. "Today" and "this month" use the user's profile timezone. Each section is `ok`, `unavailable` or `error`:
+- `unavailable`: the module that owns the data has no features yet (`server/src/config/modules.js`). The UI says so instead of showing a made-up zero. **Flip the flag to `ready: true` in the same change that ships that module.**
+- `error`: that one section failed; the others still render.
+The underlying Mongoose models (content, posts, clients, campaigns, deliverables, tasks, communications, invoices, payments) already exist from the approved plan; their create/edit endpoints arrive in later phases, so today the dashboard has no way to receive data.
 
 Not built yet (deliberately): email verification, password reset, changing email (these need an email provider).
 

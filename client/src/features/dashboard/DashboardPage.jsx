@@ -1,85 +1,71 @@
 import { RefreshCw } from 'lucide-react';
-import { Badge, Button, Card, ErrorState, PlaceholderBanner, Skeleton } from '../../components/ui/index.js';
-import { useApiHealth } from '../../lib/useApiHealth.js';
-import { NAV_ITEMS } from '../../lib/navigation.js';
+import { Button, ErrorState } from '../../components/ui/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
-
-function StatusRow({ label, loading, tone, text }) {
-  return (
-    <div className="flex items-center justify-between py-2">
-      <span className="text-sm text-slate-600">{label}</span>
-      {loading ? <Skeleton className="h-5 w-24" /> : <Badge tone={tone} dot>{text}</Badge>}
-    </div>
-  );
-}
-
-function SystemStatus() {
-  const { loading, api, database, error, refresh } = useApiHealth();
-
-  return (
-    <Card
-      title="System status"
-      description="Live checks against the backend — this is real, not sample data."
-      action={
-        <Button variant="ghost" size="sm" icon={RefreshCw} onClick={refresh}>
-          Refresh
-        </Button>
-      }
-    >
-      {error ? (
-        <ErrorState
-          title="Cannot reach the API"
-          message="Start the server with `npm run dev` and check VITE_API_BASE_URL."
-          onRetry={refresh}
-        />
-      ) : (
-        <div className="divide-y divide-slate-100">
-          <StatusRow label="API server" loading={loading} tone="success" text={api ? `OK · up ${api.uptimeSeconds}s` : ''} />
-          <StatusRow
-            label="Database (MongoDB)"
-            loading={loading}
-            tone={database?.database === 'connected' ? 'success' : 'danger'}
-            text={database?.database ?? ''}
-          />
-          <StatusRow label="Environment" loading={loading} tone="neutral" text={api?.environment ?? ''} />
-        </div>
-      )}
-    </Card>
-  );
-}
+import { useDashboard } from './useDashboard.js';
+import { formatTime } from './format.js';
+import SummaryCards from './SummaryCards.jsx';
+import ContentPipelineCard from './ContentPipelineCard.jsx';
+import UpcomingPostsCard from './UpcomingPostsCard.jsx';
+import CampaignsCard from './CampaignsCard.jsx';
+import TasksCard from './TasksCard.jsx';
+import ReviewsCard from './ReviewsCard.jsx';
+import PaymentsCard from './PaymentsCard.jsx';
+import ActivityCard from './ActivityCard.jsx';
+import SystemStatus from './SystemStatus.jsx';
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const modules = NAV_ITEMS.filter((i) => i.path !== '/dashboard');
+  const { status, data, reload, refreshing, refreshError } = useDashboard();
+  const loading = status === 'loading';
+  const sections = data?.sections;
+  const defs = data?.definitions;
+  const tz = data?.timezone ?? user.timezone;
+  const common = (key, definition) => ({ section: sections?.[key], loading, onRetry: reload, definition, definitions: defs, timezone: tz });
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Welcome, {user.name.split(' ')[0]}</h2>
-        <p className="mt-1 text-slate-500">Your content and business workspace.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Welcome, {user.name.split(' ')[0]}</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            {data
+              ? `Figures use your timezone (${tz}). Updated ${formatTime(data.generatedAt, tz)}.`
+              : 'Your content and business at a glance.'}
+          </p>
+        </div>
+        <Button variant="secondary" size="sm" icon={RefreshCw} loading={refreshing} onClick={reload}>
+          Refresh
+        </Button>
       </div>
+
+      {refreshError && (
+        <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Couldn’t refresh just now. Showing the last data we loaded.
+        </div>
+      )}
+
+      {status === 'error' ? (
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <ErrorState title="Couldn’t load your dashboard" message="Check that the server is running and try again." onRetry={reload} />
+        </div>
+      ) : (
+        <>
+          <SummaryCards sections={sections} loading={loading} />
+
+          <div className="grid items-start gap-6 lg:grid-cols-2">
+            <ContentPipelineCard {...common('contentPipeline', defs?.contentPipeline)} />
+            <UpcomingPostsCard {...common('upcomingPosts', defs?.upcomingPosts)} />
+            <TasksCard {...common('tasks')} />
+            <CampaignsCard {...common('campaigns')} />
+            <ReviewsCard {...common('reviews', defs?.pendingReviews)} />
+            <ActivityCard {...common('recentActivity', defs?.recentActivity)} />
+          </div>
+
+          <PaymentsCard {...common('payments', defs?.payments)} />
+        </>
+      )}
 
       <SystemStatus />
-
-      <PlaceholderBanner phase="Dashboard summaries">
-        Today’s posts, due tasks and outstanding balances will appear here once those modules exist. No figures are shown until then.
-      </PlaceholderBanner>
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {modules.map(({ path, label, icon: Icon, phase }) => (
-          <Card key={path} className="h-full">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-brand-50 p-2 text-brand-600">
-                <Icon className="h-5 w-5" aria-hidden />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-900">{label}</p>
-                <Badge tone="warning">{phase}</Badge>
-              </div>
-            </div>
-            <p className="mt-3 text-sm text-slate-500">Not implemented yet.</p>
-          </Card>
-        ))}
-      </div>
     </div>
   );
 }

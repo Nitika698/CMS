@@ -1,6 +1,6 @@
 export default function Card({ title, description, action, children, className = '', padded = true }) {
   return (
-    <section className={`rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>
+    <section className={`min-w-0 rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>
       {(title || action) && (
         <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-4">
           <div>

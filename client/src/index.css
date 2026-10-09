@@ -22,3 +22,11 @@
     @apply outline-2 outline-offset-2 outline-brand-600;
   }
 }
+
+/* Chart palette (validated light-mode categorical slots 1-3; see dataviz skill). Marks only: text never uses these. */
+:root {
+  --viz-1: #2a78d6; /* blue: single-series bars, "collected" */
+  --viz-2: #eb6834; /* orange: "outstanding" */
+  --viz-3: #1baf7a; /* aqua: "not yet invoiced" */
+  --viz-surface: #ffffff;
+}
