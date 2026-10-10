@@ -1,4 +1,4 @@
-# CreatorDesk
+# CMS
 
 Content and business management workspace for influencers. This repository currently contains the **application foundation**: backend skeleton with health checks and MongoDB connection handling, and a responsive frontend shell with placeholders for every module. Business features are not built yet; see `docs/PLAN.md` for the full plan and roadmap.
 
@@ -43,11 +43,11 @@ npm run dev:client   # client only
 | `NODE_ENV` | `development` / `test` / `production` | `development` |
 | `PORT` | API port | `5001` |
 | `CLIENT_ORIGIN` | Allowed browser origins, comma-separated | `http://localhost:5173` |
-| `MONGODB_URI` | MongoDB connection string (**required**) | — |
+| `MONGODB_URI` | MongoDB connection string (**required**) | â€” |
 | `DB_RETRY_SECONDS` | Delay between reconnect attempts | `5` |
 | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX` | Global rate limit | `60000`, `300` |
 | `TRUST_PROXY` | Number of reverse proxies in front of the API (correct client IPs for rate limits) | `0` |
-| `JWT_ACCESS_SECRET` | Signs access tokens (**required**, >= 32 chars, placeholder rejected in production) | � |
+| `JWT_ACCESS_SECRET` | Signs access tokens (**required**, >= 32 chars, placeholder rejected in production) | — |
 | `ACCESS_TOKEN_TTL_MINUTES` / `REFRESH_TOKEN_TTL_DAYS` | Token lifetimes | `15` / `30` |
 | `COOKIE_SECURE` | `Secure` flag on the refresh cookie (on by default in production) | auto |
 | `BCRYPT_COST` | Password hashing cost | `12` |
