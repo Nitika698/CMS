@@ -43,7 +43,7 @@ npm run dev:client   # client only
 | `NODE_ENV` | `development` / `test` / `production` | `development` |
 | `PORT` | API port | `5001` |
 | `CLIENT_ORIGIN` | Allowed browser origins, comma-separated | `http://localhost:5173` |
-| `MONGODB_URI` | MongoDB connection string (**required**) | — |
+| `MONGODB_URI` | MongoDB connection string (**required**) | â€” |
 | `DB_RETRY_SECONDS` | Delay between reconnect attempts | `5` |
 | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX` | Global rate limit | `60000`, `300` |
 | `TRUST_PROXY` | Number of reverse proxies in front of the API (correct client IPs for rate limits) | `0` |
