@@ -18,7 +18,10 @@ router.patch(
   '/',
   validate({ body: updateProfileSchema }),
   wrap(async (req, res) => {
-    const user = await User.findByIdAndUpdate(req.user.id, { $set: req.body }, { new: true, runValidators: true });
+    // Nested preferences are set field-by-field so changing one never wipes the others.
+    const { calendarPrefs, ...rest } = req.body;
+    const $set = { ...rest, ...Object.fromEntries(Object.entries(calendarPrefs ?? {}).map(([k, v]) => [`calendarPrefs.${k}`, v])) };
+    const user = await User.findByIdAndUpdate(req.user.id, { $set }, { new: true, runValidators: true });
     res.json({ user: toPublicUser(user) });
   }),
 );

@@ -33,8 +33,19 @@ export const loginSchema = z
   .object({ email, password: z.string().min(1, 'Password is required').max(200) })
   .strict();
 
+const reminderMinutes = z
+  .array(z.number().int().min(1).max(30 * 24 * 60))
+  .max(5, 'At most 5 reminders')
+  .transform((l) => [...new Set(l)].sort((a, b) => a - b));
+
+const calendarPrefs = z
+  .object({ defaultReminderOffsets: reminderMinutes, deadlineReminderOffsets: reminderMinutes, weekStartsOn: z.union([z.literal(0), z.literal(1), z.literal(6)]) })
+  .partial()
+  .strict()
+  .refine((v) => Object.keys(v).length > 0, 'Provide at least one calendar setting');
+
 export const updateProfileSchema = z
-  .object({ name: name.optional(), timezone: timezone.optional(), defaultCurrency: currency.optional() })
+  .object({ name: name.optional(), timezone: timezone.optional(), defaultCurrency: currency.optional(), calendarPrefs: calendarPrefs.optional() })
   .strict()
   .refine((v) => Object.keys(v).length > 0, 'Provide at least one field to update');
 

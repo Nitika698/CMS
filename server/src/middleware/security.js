@@ -23,6 +23,16 @@ export const refreshLimiter = rateLimit({
   handler: limited,
 });
 
+/** Per-user limit on file uploads (runs after authenticate, so it is keyed by user rather than IP). */
+export const uploadLimiter = rateLimit({
+  windowMs: env.AUTH_RATE_LIMIT_WINDOW_MS,
+  limit: env.UPLOAD_RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.id ?? req.ip,
+  handler: limited,
+});
+
 export const noStore = (_req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
@@ -39,7 +49,7 @@ export const noStore = (_req, res, next) => {
 const DEV_LOCAL_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
 export function csrfGuard(req, _res, next) {
-  if (req.get('x-requested-with') !== 'creatordesk') {
+  if (req.get('x-requested-with') !== 'cms') {
     return next(new AppError(403, 'CSRF_REJECTED', 'Missing required request header'));
   }
   const origin = req.get('origin');

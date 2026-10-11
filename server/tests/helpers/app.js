@@ -1,4 +1,7 @@
 import './setup.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import mongoose from 'mongoose';
 import request from 'supertest';
 import { after, before, beforeEach } from 'node:test';
@@ -7,7 +10,7 @@ const { createApp } = await import('../../src/app.js');
 export const app = createApp();
 
 export const PASSWORD = 'correct-horse-9';
-export const CSRF = { 'X-Requested-With': 'creatordesk' };
+export const CSRF = { 'X-Requested-With': 'cms' };
 
 export function useDatabase() {
   before(async () => {
@@ -18,6 +21,9 @@ export function useDatabase() {
   });
   beforeEach(async () => {
     for (const c of Object.values(mongoose.connection.collections)) await c.deleteMany({});
+    // every test starts with no stored files and no temp uploads, so "nothing was written" assertions are meaningful
+    fs.rmSync(process.env.UPLOAD_DIR, { recursive: true, force: true });
+    fs.rmSync(path.join(os.tmpdir(), 'cms-uploads'), { recursive: true, force: true });
   });
   after(async () => {
     await mongoose.connection.dropDatabase();

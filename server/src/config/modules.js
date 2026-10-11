@@ -6,8 +6,8 @@
  * Flip a flag to `true` in the same change that ships that module's CRUD.
  */
 export const MODULES = {
-  content: { ready: false, phase: 'Roadmap P2', label: 'Content' },
-  calendar: { ready: false, phase: 'Roadmap P3', label: 'Calendar' },
+  content: { ready: true, phase: 'Roadmap P2', label: 'Content' },
+  calendar: { ready: true, phase: 'Roadmap P3', label: 'Calendar' },
   crm: { ready: false, phase: 'Roadmap P4', label: 'Brands & communications' },
   campaigns: { ready: false, phase: 'Roadmap P5', label: 'Campaigns' },
   tasks: { ready: false, phase: 'Roadmap P6', label: 'Tasks' },

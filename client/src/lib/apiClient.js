@@ -1,5 +1,8 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
+/** Absolute-or-relative URL for an API path (used for <img>/<video> links that carry their own signed token). */
+export const apiUrl = (path) => `${BASE_URL}${path}`;
+
 export class ApiError extends Error {
   constructor(status, code, message, body) {
     super(message);
@@ -30,16 +33,18 @@ export const setAuthLostHandler = (fn) => {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function send(path, { method = 'GET', body, signal } = {}) {
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
   let res;
   try {
     res = await fetch(`${BASE_URL}${path}`, {
       method,
       headers: {
-        'X-Requested-With': 'creatordesk', // required by the server's CSRF guard on cookie endpoints
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
+        'X-Requested-With': 'cms', // required by the server's CSRF guard on cookie endpoints
+        // FormData sets its own multipart Content-Type (with boundary), so only JSON bodies get one
+        ...(body && !isForm ? { 'Content-Type': 'application/json' } : {}),
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
-      body: body ? JSON.stringify(body) : undefined,
+      body: body ? (isForm ? body : JSON.stringify(body)) : undefined,
       credentials: 'include',
       signal,
     });

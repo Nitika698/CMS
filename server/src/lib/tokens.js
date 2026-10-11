@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 
-const ISSUER = 'creatordesk';
+const ISSUER = 'cms';
 
 export function signAccessToken({ userId, sessionId }) {
   return jwt.sign({ sid: String(sessionId) }, env.JWT_ACCESS_SECRET, {

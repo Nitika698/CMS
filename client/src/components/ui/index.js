@@ -6,3 +6,4 @@ export { default as Badge } from './Badge.jsx';
 export { default as Table } from './Table.jsx';
 export { default as Popover } from './Popover.jsx';
 export { Spinner, Skeleton, EmptyState, ErrorState, PlaceholderBanner } from './Feedback.jsx';
+export { ToastProvider, useToast } from './Toast.jsx';

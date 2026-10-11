@@ -31,8 +31,33 @@ const schema = z
     LOCKOUT_MINUTES: z.coerce.number().int().min(1).default(15),
     AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60_000),
     AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
+
+    // --- Calendar ---
+    CALENDAR_CONFLICT_WINDOW_MINUTES: z.coerce.number().int().min(0).max(1440).default(30),
+    REMINDER_SWEEP_SECONDS: z.coerce.number().int().min(5).max(3600).default(60),
+
+    // --- Media storage ---
+    STORAGE_PROVIDER: z.enum(['local', 'cloudinary']).default('local'),
+    UPLOAD_DIR: z.string().min(1).default('uploads'), // local provider only; resolved against the server working directory
+    MAX_UPLOAD_IMAGE_MB: z.coerce.number().positive().default(10),
+    MAX_UPLOAD_VIDEO_MB: z.coerce.number().positive().default(100),
+    MAX_UPLOAD_DOC_MB: z.coerce.number().positive().default(20),
+    MAX_ASSETS_PER_CONTENT: z.coerce.number().int().positive().default(20),
+    ASSET_TOKEN_TTL_SECONDS: z.coerce.number().int().min(10).max(3600).default(300),
+    UPLOAD_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
+    CLOUDINARY_CLOUD_NAME: z.string().optional(),
+    CLOUDINARY_API_KEY: z.string().optional(),
+    CLOUDINARY_API_SECRET: z.string().optional(),
   })
   .superRefine((v, ctx) => {
+    if (v.STORAGE_PROVIDER === 'cloudinary') {
+      for (const k of ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET']) {
+        if (!v[k]) ctx.addIssue({ code: 'custom', path: [k], message: 'is required when STORAGE_PROVIDER=cloudinary' });
+      }
+    }
+    if (v.NODE_ENV === 'production' && v.STORAGE_PROVIDER === 'local') {
+      ctx.addIssue({ code: 'custom', path: ['STORAGE_PROVIDER'], message: 'local disk storage is for development only; use cloudinary in production' });
+    }
     if (v.NODE_ENV === 'production' && /change-me|example|secret/i.test(v.JWT_ACCESS_SECRET)) {
       ctx.addIssue({ code: 'custom', path: ['JWT_ACCESS_SECRET'], message: 'must be a real random secret in production' });
     }

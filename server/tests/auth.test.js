@@ -122,9 +122,9 @@ describe('current user and unauthorized access', () => {
   test('protected routes reject missing, malformed, tampered, wrong-secret and alg=none tokens with 401', async () => {
     const { token, user } = await signUp();
     const noneToken = `${Buffer.from('{"alg":"none","typ":"JWT"}').toString('base64url')}.${Buffer.from(
-      JSON.stringify({ sub: user.id, sid: user.id, iss: 'creatordesk' }),
+      JSON.stringify({ sub: user.id, sid: user.id, iss: 'cms' }),
     ).toString('base64url')}.`;
-    const wrongSecret = jwt.sign({ sid: user.id }, 'another-secret-another-secret-another-1', { subject: user.id, issuer: 'creatordesk' });
+    const wrongSecret = jwt.sign({ sid: user.id }, 'another-secret-another-secret-another-1', { subject: user.id, issuer: 'cms' });
     const headers = [
       {},
       { Authorization: 'Bearer' },
@@ -147,7 +147,7 @@ describe('current user and unauthorized access', () => {
     const { user } = await signUp();
     const session = await Session.findOne({ user: user.id });
     const expired = jwt.sign({ sid: String(session._id) }, SECRET, {
-      algorithm: 'HS256', subject: user.id, issuer: 'creatordesk', expiresIn: -10,
+      algorithm: 'HS256', subject: user.id, issuer: 'cms', expiresIn: -10,
     });
     const res = await request(app).get('/api/v1/me').set(bearer(expired));
     assert.equal(res.status, 401);

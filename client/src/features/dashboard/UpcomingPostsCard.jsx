@@ -39,7 +39,7 @@ export default function UpcomingPostsCard({ section, loading, definition, timezo
             <ul className="divide-y divide-slate-100">
               {s.items.map((p) => (
                 <li key={p.id}>
-                  <Link to="/calendar" className="flex items-center justify-between gap-3 py-2.5 hover:bg-slate-50">
+                  <Link to={`/calendar?post=${p.id}`} className="flex items-center justify-between gap-3 py-2.5 hover:bg-slate-50">
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium text-slate-900">{p.contentTitle}</span>
                       <span className="block text-xs text-slate-500">{formatDateTime(p.scheduledAt, timezone)}</span>

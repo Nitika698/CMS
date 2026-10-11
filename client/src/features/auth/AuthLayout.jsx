@@ -3,7 +3,7 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-10">
       <div className="mb-6 flex items-center gap-2.5">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-base font-bold text-white">C</div>
-        <span className="text-xl font-semibold tracking-tight text-slate-900">CreatorDesk</span>
+        <span className="text-xl font-semibold tracking-tight text-slate-900">CMS</span>
       </div>
       <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <h1 className="text-xl font-semibold text-slate-900">{title}</h1>

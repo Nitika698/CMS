@@ -1,4 +1,4 @@
-# CreatorDesk — Planning Document (Phase 0)
+# CMS — Planning Document (Phase 0)
 
 Status: DRAFT for approval. No application code exists yet. Repo was empty at time of writing, so nothing is reused.
 
@@ -388,7 +388,7 @@ Rules: no secrets in client; only `VITE_API_BASE_URL` is public config; money fo
    - References: `assertOwned()` for every foreign id (D2).
    - Aggregations (`/finance/summary`, dashboard) must start with `$match:{owner}`.
 4. **Hardening**: Zod `.strict()` schemas (reject unknown keys), `express-mongo-sanitize`, `hpp`, body size limits, Helmet, CORS allow-list from env, rate limits (auth strict, global moderate), generic auth error messages, account lockout/backoff.
-5. **Cloudinary**: per-user folder `creatordesk/{userId}/...` in signed upload params; `POST /media` verifies publicId prefix.
+5. **Cloudinary**: per-user folder `cms/{userId}/...` in signed upload params; `POST /media` verifies publicId prefix.
 6. **Secrets**: all in server env; `.env` git-ignored; `.env.example` committed; social/AI tokens encrypted at rest.
 7. **Automated isolation tests** (see §8) are a merge-blocking requirement.
 

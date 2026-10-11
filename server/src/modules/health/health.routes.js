@@ -8,7 +8,7 @@ const router = Router();
 router.get('/', (_req, res) => {
   res.json({
     status: 'ok',
-    service: 'creatordesk-api',
+    service: 'cms-api',
     environment: env.NODE_ENV,
     uptimeSeconds: Math.round(process.uptime()),
     timestamp: new Date().toISOString(),

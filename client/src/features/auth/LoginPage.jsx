@@ -33,7 +33,7 @@ export default function LoginPage() {
       subtitle="Welcome back to your creator workspace."
       footer={
         <>
-          New to CreatorDesk?{' '}
+          New to CMS?{' '}
           <Link to="/register" className="font-medium text-brand-600 hover:underline">
             Create an account
           </Link>

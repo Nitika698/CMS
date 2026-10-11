@@ -1,39 +1,15 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Bell, LogOut, Menu, Search, Settings, UserCircle2 } from 'lucide-react';
+import { LogOut, Menu, Search, Settings, UserCircle2 } from 'lucide-react';
 import { findNavItem } from '../../lib/navigation.js';
-import { Popover, EmptyState, Modal, Input, Badge } from '../ui/index.js';
+import { Popover, Modal, Input, Badge } from '../ui/index.js';
 import { useAuth } from '../../features/auth/AuthContext.jsx';
+import NotificationsMenu from '../../features/notifications/NotificationsMenu.jsx';
 
 function pageTitle(pathname) {
   if (pathname.startsWith('/design-system')) return 'Design system';
   if (pathname.startsWith('/settings')) return 'Settings';
-  return findNavItem(pathname)?.label ?? 'CreatorDesk';
-}
-
-function NotificationsMenu() {
-  return (
-    <Popover
-      width="w-80"
-      trigger={({ toggle, open }) => (
-        <button
-          onClick={toggle}
-          aria-label="Notifications"
-          aria-expanded={open}
-          className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
-        >
-          <Bell className="h-5 w-5" />
-        </button>
-      )}
-    >
-      <div className="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900">Notifications</div>
-      <EmptyState
-        icon={Bell}
-        title="No notifications"
-        description="Reminders for posts, tasks and payments will appear here once those modules are built."
-      />
-    </Popover>
-  );
+  return findNavItem(pathname)?.label ?? 'CMS';
 }
 
 function ProfileMenu() {

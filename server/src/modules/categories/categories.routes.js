@@ -5,6 +5,7 @@ import { noStore } from '../../middleware/security.js';
 import { validate } from '../../middleware/validate.js';
 import { AppError } from '../../lib/errors.js';
 import { scoped } from '../../lib/scoped.js';
+import { Content } from '../content/content.model.js';
 import { Category, toPublicCategory } from './category.model.js';
 
 /**
@@ -62,6 +63,8 @@ router.delete(
   '/:id',
   wrap(async (req, res) => {
     await repo(req).remove(req.params.id);
+    // Content keeps existing; it just becomes uncategorised.
+    await Content.updateMany({ owner: req.user.id, category: req.params.id }, { $set: { category: null } });
     res.status(204).end();
   }),
 );

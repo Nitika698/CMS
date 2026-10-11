@@ -10,7 +10,7 @@ export const DEFINITIONS = {
   contentPipeline: {
     kind: 'count',
     period: 'snapshot (now)',
-    text: 'Non-archived content items by stage. A content item counts once, in its furthest stage: Published (has a post confirmed as published) > Scheduled (has a post scheduled or awaiting confirmation) > its own stage (Idea, Drafting, Ready).',
+    text: 'Non-archived content items by workflow status: Idea, Planning, Creation, Review, Approved, Published. Each item counts once, in its current status. "Published" means you confirmed it is live; scheduled posts are not counted as published.',
   },
   upcomingPosts: {
     kind: 'count',

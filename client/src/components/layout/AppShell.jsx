@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar.jsx';
 import Topbar from './Topbar.jsx';
+import ErrorBoundary from '../ErrorBoundary.jsx';
 
 export default function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -19,8 +20,11 @@ export default function AppShell() {
       <Sidebar mobileOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <div className="lg:pl-64">
         <Topbar onMenu={() => setDrawerOpen(true)} />
-        <main id="main" className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
-          <Outlet />
+        <main id="main" className={`mx-auto w-full px-4 py-6 sm:px-6 ${pathname.startsWith('/calendar') ? 'max-w-[110rem]' : 'max-w-6xl'}`}>
+          {/* keyed by route so navigating away from a crashed screen recovers it */}
+          <ErrorBoundary key={pathname}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>

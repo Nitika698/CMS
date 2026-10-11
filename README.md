@@ -1,4 +1,4 @@
-# CreatorDesk
+# CMS
 
 Content and business management workspace for influencers. This repository currently contains the **application foundation**: backend skeleton with health checks and MongoDB connection handling, and a responsive frontend shell with placeholders for every module. Business features are not built yet; see `docs/PLAN.md` for the full plan and roadmap.
 
@@ -31,7 +31,7 @@ npm run dev:client   # client only
 | Command | What it does |
 |---|---|
 | `npm run lint` | ESLint over the whole repo |
-| `npm test` | Server tests (Node test runner + supertest). **Needs a local MongoDB**: uses the throw-away database `creatordesk-test` (override with `MONGODB_URI_TEST`; the name must end in `-test`), which is wiped on every run |
+| `npm test` | Server tests (Node test runner + supertest). **Needs a local MongoDB**: uses the throw-away database `cms-test` (override with `MONGODB_URI_TEST`; the name must end in `-test`), which is wiped on every run |
 | `npm run build` | Production build of the client into `client/dist` |
 | `npm run check` | lint + test + build |
 | `npm start` | Start the API in production mode |
@@ -47,12 +47,14 @@ npm run dev:client   # client only
 | `DB_RETRY_SECONDS` | Delay between reconnect attempts | `5` |
 | `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX` | Global rate limit | `60000`, `300` |
 | `TRUST_PROXY` | Number of reverse proxies in front of the API (correct client IPs for rate limits) | `0` |
-| `JWT_ACCESS_SECRET` | Signs access tokens (**required**, >= 32 chars, placeholder rejected in production) | — |
+| `JWT_ACCESS_SECRET` | Signs access tokens (**required**, >= 32 chars, placeholder rejected in production) | â€” |
 | `ACCESS_TOKEN_TTL_MINUTES` / `REFRESH_TOKEN_TTL_DAYS` | Token lifetimes | `15` / `30` |
 | `COOKIE_SECURE` | `Secure` flag on the refresh cookie (on by default in production) | auto |
 | `BCRYPT_COST` | Password hashing cost | `12` |
 | `MAX_FAILED_LOGINS` / `LOCKOUT_MINUTES` | Account lockout after repeated wrong passwords | `5` / `15` |
 | `AUTH_RATE_LIMIT_WINDOW_MS` / `AUTH_RATE_LIMIT_MAX` | Failed register/login/password-change attempts allowed per IP | `900000` / `10` |
+| `CALENDAR_CONFLICT_WINDOW_MINUTES` | Same-platform posts closer than this need confirmation | `30` |
+| `REMINDER_SWEEP_SECONDS` | How often the in-process reminder job runs | `60` |
 
 **`client/.env`** (public values only; anything `VITE_*` is visible in the browser)
 | Variable | Purpose | Default |
@@ -65,7 +67,7 @@ The server refuses to start with an invalid environment and prints which variabl
 ## Authentication & data isolation
 - **Passwords:** bcrypt (cost 12), 10-72 chars. Never stored, logged or returned. Responses use an allow-list serializer (`toPublicUser`).
 - **Tokens:** a 15-minute access JWT kept **in browser memory only** (sent as `Authorization: Bearer`), plus an opaque refresh token in an **HttpOnly, SameSite=Strict** cookie scoped to `/api/v1/auth`, stored server-side only as a SHA-256 hash. Each refresh rotates the token; replaying an old one after a short grace window revokes the session. Logout, password change and "sign out of all devices" take effect immediately because every request also checks the session is still active.
-- **CSRF:** SameSite=Strict + a required `X-Requested-With: creatordesk` header + `Origin` check on the cookie-authenticated endpoints (`/auth/refresh`, `/auth/logout`). In development any `http://localhost:*` origin is accepted (the Vite proxy may use any port); **in production set `CLIENT_ORIGIN` to your real site origin.**
+- **CSRF:** SameSite=Strict + a required `X-Requested-With: cms` header + `Origin` check on the cookie-authenticated endpoints (`/auth/refresh`, `/auth/logout`). In development any `http://localhost:*` origin is accepted (the Vite proxy may use any port); **in production set `CLIENT_ORIGIN` to your real site origin.**
 - **Deployment constraint:** because the cookie is `SameSite=Strict`, the web app and API must be served from the same site (same registrable domain, ideally one origin behind a reverse proxy). Cross-site hosting would need a different cookie policy and stronger CSRF tokens.
 - **Rate limiting & lockout:** failed register/login/change-password attempts are limited per IP; 5 wrong passwords lock the account for 15 minutes. Login errors are identical for "unknown email" and "wrong password".
 - **Isolation:** every business document carries `owner`. All data access goes through `server/src/lib/scoped.js` (`scoped(Model, userId)` injects `owner`; `assertOwned` validates foreign ids). Someone else's id returns **404**, indistinguishable from a missing id. Request bodies are `.strict()`: unknown keys such as `owner` are rejected. `Category` (`/api/v1/categories`) is the reference implementation that future modules copy.
@@ -80,6 +82,43 @@ The server refuses to start with an invalid environment and prints which variabl
 | POST | `/me/change-password` | Signed in, rate-limited |
 | GET/POST, GET/PATCH/DELETE `/:id` | `/categories` | Signed in, owner-scoped |
 | GET | `/dashboard` | Signed in; read-only, always the caller's own data |
+| GET / POST | `/content`, `/content/meta` | Signed in. List (search, filter, sort, paginate) and create; `meta` = workflow + limits |
+| GET / PATCH / DELETE | `/content/:id` | Signed in, owner-scoped. DELETE is permanent and only for archived content |
+| POST | `/content/:id/transition`, `/comments`, `/archive`, `/restore` | Controlled status moves, review comments, soft delete |
+| GET | `/content/:id/history` | Change history (`?type=reviews` for comments/decisions; cursor-paginated) |
+| POST / DELETE | `/content/:id/assets`, `/content/:id/assets/:assetId` | Upload (multipart, field `file`) / remove a file |
+| GET | `/media/:id/access`, `/media/:id/file` | Short-lived signed link / the private file (session or signed link) |
+| GET | `/campaigns` | Read-only lookup for the content form's campaign picker (Campaigns CRUD is a later phase) |
+| GET | `/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD` | Signed in. Entries (each linked to its content), deadlines and planned dates for a range of the user's LOCAL days (max 62). Filters: `platform`, `category`, `campaign`, `status`, `contentStatus` |
+| GET | `/calendar/upcoming`, `/calendar/meta`, `/calendar/integrations` | "Needs you" panel data; stage vocabulary and limits; what each platform supports (today: manual only) |
+| GET / POST | `/posts` | Signed in. List (`?content=`) and create a calendar entry |
+| GET / PATCH / DELETE | `/posts/:id` | Owner-scoped. PATCH reschedules/edits (send `version` to detect stale edits) |
+| POST | `/posts/:id/transition` | Controlled state changes: schedule, ready, published (user-confirmed), missed, cancelled |
+| POST | `/posts/:id/publish-via-platform` | Future direct publishing. Returns **501** until a platform adapter is registered (none are) |
+| GET / POST | `/notifications`, `/notifications/read-all`, `/notifications/:id/read` | In-app reminders |
+
+### Content module
+- **Workflow:** Idea > Planning > Creation > Review > Approved > Published. Only listed moves are allowed (`server/src/modules/content/content.constants.js` is the single source; the UI reads it from `/content/meta`). Sending to Review needs a caption or a file. **Rejecting** (Review > Creation) needs a comment, starts a new revision and withdraws any approval. **Published** means *you* confirmed it is live (time not in the future); CMS does not check the platform, and published content is locked except tags and the link.
+- **History:** every creation, tracked edit (before/after for short fields; long text records only that it changed), status move, approval, rejection, comment, upload and archive is stored in an append-only history. Review comments live there too, so nothing is duplicated.
+- **Media:** files are uploaded to the server, validated by their real bytes (JPEG/PNG/GIF/WebP, MP4/MOV/WebM, PDF; no SVG/HTML), size-capped per type, stored under a server-generated name, and served only through an owner check or a short-lived signed link. Choose the provider with `STORAGE_PROVIDER`: `local` (disk, development only; refused in production) or `cloudinary` (private "authenticated" assets, one folder per user). **The Cloudinary adapter is tested only against a mocked SDK in this repo; verify it with your own account before relying on it.**
+- **Campaign link:** content can reference one of your campaigns (checked for ownership). Creating campaigns arrives with the Campaigns module.
+
+### Calendar module (internal scheduling only)
+CMS **does not publish to Instagram, YouTube, TikTok or any other network.** The calendar plans your posts and reminds you; you publish yourself and then confirm it. Four states are kept deliberately distinct, in the API and in the UI (icon + name + style, never colour alone):
+
+| State | Stored as | Meaning |
+|---|---|---|
+| **Planned** | `planned` | A tentative slot. No reminder will ever fire. |
+| **Scheduled reminder** | `scheduled` | CMS will remind you (in-app) before and at this time. Nothing is posted. |
+| **Ready to publish** | `awaiting_confirmation` | The time has come: post it yourself, then confirm. Reached automatically by the reminder job, or by you. |
+| **Published** | `published` | *You* confirmed it is live (`verification: "manual"`; time cannot be in the future; content must be approved). Only a future platform adapter can record `verification: "platform"`, and only with the platform's own post id. |
+
+- **Time zones:** everything is stored as a UTC instant. The server interprets local wall-clock times (`scheduledLocal`, `publishedLocal`) in the user's **profile timezone** and returns each entry's local day/time, so the browser does no time-zone maths. Local times skipped by a clock change are refused; times that occur twice use the earlier one and warn. A bare date-time without an offset is rejected.
+- **No accidental duplicates:** one active entry per content + platform (enforced by a unique index, so races cannot slip through); two reminders on one platform less than `CALENDAR_CONFLICT_WINDOW_MINUTES` apart need an explicit "schedule anyway".
+- **Conflicting updates:** every entry has a `version`; an edit or drag made from a stale screen is refused (409) instead of silently overwriting. The reminder job bumps the version when it changes a state.
+- **Reminders:** per-entry lead times plus defaults in Settings; deadline reminders use the end of the deadline day in the user's timezone. An in-process job (`REMINDER_SWEEP_SECONDS`) delivers **in-app notifications only** (the bell). Every notification has a unique key, so sweeps are idempotent, safe on several servers, and rescheduling re-arms them.
+- **Views:** month, week, day (and a phone-friendly agenda), filters by platform, category, campaign, entry state and content status, drag-and-drop rescheduling on desktop pointers (touch screens use the edit dialog), and every entry links to its content (and back from the content page).
+- **Future publishing:** `server/src/integrations/publishing/` defines the adapter contract (`adapter.js`), a registry that is **empty by design**, and the only code path allowed to mark a post platform-published (`publishing.service.js`). To add a network, implement and test the adapter against the platform's real, authorised API and register it there; nothing else changes.
 
 ### Dashboard
 `GET /api/v1/dashboard` returns seven independent sections (content pipeline, upcoming posts, campaigns & deadlines, tasks, pending reviews, payments, recent activity) plus a `definitions` block stating, for every metric, whether it is a **count**, an **amount** (integer minor units, per currency, never summed across currencies) or a **duration**, and the **time period** it covers. "Today" and "this month" use the user's profile timezone. Each section is `ok`, `unavailable` or `error`:
@@ -87,7 +126,7 @@ The server refuses to start with an invalid environment and prints which variabl
 - `error`: that one section failed; the others still render.
 The underlying Mongoose models (content, posts, clients, campaigns, deliverables, tasks, communications, invoices, payments) already exist from the approved plan; their create/edit endpoints arrive in later phases, so today the dashboard has no way to receive data.
 
-Not built yet (deliberately): email verification, password reset, changing email (these need an email provider).
+Not built yet (deliberately): direct publishing to any social network, email/push reminders, email verification, password reset, changing email (these need an email provider).
 
 ## How to verify it works
 1. `npm run dev`

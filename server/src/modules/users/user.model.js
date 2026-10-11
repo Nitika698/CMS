@@ -11,6 +11,13 @@ const userSchema = new mongoose.Schema(
     failedLoginCount: { type: Number, default: 0, select: false },
     lockedUntil: { type: Date, default: null, select: false },
     lastLoginAt: { type: Date, default: null },
+    calendarPrefs: {
+      // Minutes before a scheduled post to remind (in-app). Applied to new scheduled posts that don't choose their own.
+      defaultReminderOffsets: { type: [Number], default: [60] },
+      // Minutes before the END of a content deadline day to remind.
+      deadlineReminderOffsets: { type: [Number], default: [1440] },
+      weekStartsOn: { type: Number, enum: [0, 1, 6], default: 1 }, // 0 Sunday, 1 Monday, 6 Saturday
+    },
   },
   { timestamps: true },
 );
@@ -24,6 +31,11 @@ export function toPublicUser(u) {
     timezone: u.timezone,
     defaultCurrency: u.defaultCurrency,
     lastLoginAt: u.lastLoginAt,
+    calendarPrefs: {
+      defaultReminderOffsets: u.calendarPrefs?.defaultReminderOffsets ?? [60],
+      deadlineReminderOffsets: u.calendarPrefs?.deadlineReminderOffsets ?? [1440],
+      weekStartsOn: u.calendarPrefs?.weekStartsOn ?? 1,
+    },
     createdAt: u.createdAt,
     updatedAt: u.updatedAt,
   };

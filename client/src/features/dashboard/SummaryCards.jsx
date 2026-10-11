@@ -48,7 +48,7 @@ export default function SummaryCards({ sections, loading }) {
         {(c) => (
           <>
             <Big>{formatCount(c.total)}</Big>
-            <Sub>{formatCount(c.stages.find((x) => x.key === 'ready')?.count ?? 0)} ready</Sub>
+            <Sub>{formatCount(c.stages.find((x) => x.key === 'review')?.count ?? 0)} in review</Sub>
           </>
         )}
       </Tile>

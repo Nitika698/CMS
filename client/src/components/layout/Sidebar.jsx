@@ -6,7 +6,7 @@ function Brand() {
   return (
     <div className="flex items-center gap-2.5 px-5 py-5">
       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">C</div>
-      <span className="text-base font-semibold tracking-tight text-slate-900">CreatorDesk</span>
+      <span className="text-base font-semibold tracking-tight text-slate-900">CMS</span>
     </div>
   );
 }

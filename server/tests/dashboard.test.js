@@ -39,13 +39,17 @@ const invoice = (o, cl, currency, totalMinor, status, dueDate) => Invoice.create
 const pay = (o, inv, amountMinor, paidAt) => Payment.create({ owner: o, invoice: inv._id, amountMinor, currency: inv.currency, paidAt });
 
 describe('modules that are not built yet', () => {
-  test('every section is "unavailable" (not zero) and carries no metrics', async () => {
+  test('sections whose module is not built are "unavailable" (not zero) and carry no metrics; Content and Calendar are live', async () => {
     const { token } = await signUp();
     const res = await request(app).get('/api/v1/dashboard').set(bearer(token));
     assert.equal(res.status, 200);
     const sections = Object.entries(res.body.sections);
     assert.equal(sections.length, 7);
     for (const [key, s] of sections) {
+      if (['contentPipeline', 'upcomingPosts'].includes(key)) {
+        assert.equal(s.state, 'ok'); // the Content and Calendar modules are implemented
+        continue;
+      }
       assert.equal(s.state, 'unavailable', key);
       assert.ok(s.module && s.phase, key);
       assert.deepEqual(Object.keys(s).sort(), ['label', 'module', 'phase', 'state'], `${key} must not contain numbers`);
@@ -65,15 +69,6 @@ describe('modules that are not built yet', () => {
     assert.equal(d.sections.contentPipeline.state, 'ok');
     assert.equal(d.sections.contentPipeline.total, 0);
   });
-
-  test('without Calendar, the pipeline shows only the three content stages and says why', async () => {
-    const a = await signUp();
-    await content(a.user.id, 'x', 'ready');
-    const s = await section(a.user, 'contentPipeline', { modules: { ...ALL, calendar: { ...ALL.calendar, ready: false } } });
-    assert.deepEqual(s.stages.map((x) => x.key), ['idea', 'drafting', 'ready']);
-    assert.equal(s.stages[2].count, 1);
-    assert.match(s.note, /Calendar/);
-  });
 });
 
 describe('a user with no data', () => {
@@ -92,33 +87,37 @@ describe('a user with no data', () => {
 });
 
 describe('content by workflow status', () => {
-  test('counts each item once, in its furthest stage; excludes archived and other users; ignores foreign posts', async () => {
+  test('counts every item once in its CURRENT status; excludes archived items and other users; posts never change a status', async () => {
     const a = await signUp();
     const b = await signUp();
     const A = a.user.id;
     await content(A, 'i1', 'idea');
     await content(A, 'i2', 'idea');
-    await content(A, 'd1', 'drafting');
-    await content(A, 'r1', 'ready');
-    const sched = await content(A, 'r2', 'ready');
-    await post(A, sched, 'scheduled', at(DAY));
-    const both = await content(A, 'd2', 'drafting');
-    await post(A, both, 'scheduled', at(DAY));
-    await post(A, both, 'published', at(-DAY), { verification: 'manual', publishedAt: at(-DAY) });
-    const cancelled = await content(A, 'i3', 'idea');
-    await post(A, cancelled, 'cancelled', at(DAY));
-    await content(A, 'archived', 'ready', { archivedAt: at(-DAY) });
-    // another user's post pointing at A's content must not change A's numbers
-    const target = await content(A, 'target', 'ready');
-    await post(b.user.id, target, 'published', at(-DAY), { verification: 'manual' });
-    // other user's own content must not be counted
-    for (let i = 0; i < 5; i++) await content(b.user.id, `b${i}`, 'ready');
+    await content(A, 'p1', 'planning');
+    await content(A, 'c1', 'creation');
+    await content(A, 'r1', 'review');
+    const r2 = await content(A, 'r2', 'review');
+    await content(A, 'a1', 'approved');
+    await content(A, 'pub', 'published', { publishedAt: at(-DAY), publishedVerification: 'manual' });
+    await content(A, 'archived', 'approved', { archivedAt: at(-DAY) });
+    // a scheduled / even "published" POST does not move content: only the user's own status change does
+    await post(A, r2, 'scheduled', at(DAY));
+    await post(A, r2, 'published', at(-DAY), { verification: 'manual' });
+    // someone else's content must not be counted
+    for (let i = 0; i < 5; i++) await content(b.user.id, `b${i}`, 'approved');
 
     const s = await section(a.user, 'contentPipeline');
-    const counts = Object.fromEntries(s.stages.map((x) => [x.key, x.count]));
-    assert.deepEqual(counts, { idea: 3, drafting: 1, ready: 2, scheduled: 1, published: 1 });
+    assert.deepEqual(s.stages.map((x) => x.key), ['idea', 'planning', 'creation', 'review', 'approved', 'published']);
+    assert.deepEqual(Object.fromEntries(s.stages.map((x) => [x.key, x.count])), { idea: 2, planning: 1, creation: 1, review: 2, approved: 1, published: 1 });
     assert.equal(s.total, 8);
-    assert.equal(s.total, Object.values(counts).reduce((x, y) => x + y, 0));
+  });
+
+  test('is independent of the Calendar module', async () => {
+    const a = await signUp();
+    await content(a.user.id, 'x', 'review');
+    const s = await section(a.user, 'contentPipeline', { modules: { ...ALL, calendar: { ...ALL.calendar, ready: false } } });
+    assert.equal(s.state, 'ok');
+    assert.equal(s.stages.find((x) => x.key === 'review').count, 1);
   });
 });
 
@@ -127,17 +126,16 @@ describe('upcoming scheduled posts', () => {
     const a = await signUp();
     const b = await signUp();
     const A = a.user.id;
-    const c = await content(A, 'Reel one', 'ready');
-    await post(A, c, 'scheduled', at(2 * DAY));
-    await post(A, c, 'scheduled', at(HOUR));
-    await post(A, c, 'scheduled', at(14 * DAY - HOUR)); // inside
-    await post(A, c, 'scheduled', at(14 * DAY + HOUR)); // outside
-    await post(A, c, 'planned', at(DAY)); // not scheduled
-    await post(A, c, 'published', at(DAY), { verification: 'manual' }); // not scheduled
-    await post(A, c, 'cancelled', at(DAY));
-    await post(A, c, 'scheduled', at(-HOUR)); // in the past, never confirmed
-    await post(A, c, 'awaiting_confirmation', at(-2 * HOUR));
-    await post(b.user.id, await content(b.user.id, 'B secret', 'ready'), 'scheduled', at(HOUR));
+    await post(A, await content(A, 'Reel one', 'approved'), 'scheduled', at(2 * DAY));
+    await post(A, await content(A, 'Reel one', 'approved'), 'scheduled', at(HOUR));
+    await post(A, await content(A, 'Reel one', 'approved'), 'scheduled', at(14 * DAY - HOUR)); // inside
+    await post(A, await content(A, 'Reel one', 'approved'), 'scheduled', at(14 * DAY + HOUR)); // outside
+    await post(A, await content(A, 'Reel one', 'approved'), 'planned', at(DAY)); // not scheduled
+    await post(A, await content(A, 'Reel one', 'approved'), 'published', at(DAY), { verification: 'manual' }); // not scheduled
+    await post(A, await content(A, 'Reel one', 'approved'), 'cancelled', at(DAY));
+    await post(A, await content(A, 'Reel one', 'approved'), 'scheduled', at(-HOUR)); // in the past, never confirmed
+    await post(A, await content(A, 'Reel one', 'approved'), 'awaiting_confirmation', at(-2 * HOUR));
+    await post(b.user.id, await content(b.user.id, 'B secret', 'approved'), 'scheduled', at(HOUR));
 
     const s = await section(a.user, 'upcomingPosts');
     assert.equal(s.count, 3);
@@ -376,7 +374,7 @@ describe('recent client activity', () => {
 
 describe('user isolation across the whole dashboard', () => {
   async function seedEverything(U, tag) {
-    const c = await content(U, `${tag} content`, 'ready');
+    const c = await content(U, `${tag} content`, 'approved');
     await post(U, c, 'scheduled', at(DAY));
     const brand = await client(U, `${tag} Brand`);
     const camp = await campaign(U, brand, `${tag} Campaign`, 'in_progress', { endDate: at(2 * DAY), ...fee(5000, 'JPY') });

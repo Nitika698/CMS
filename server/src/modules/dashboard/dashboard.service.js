@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { MODULES } from '../../config/modules.js';
 import { dayRange, monthRange, zonedYmd } from '../../lib/timezone.js';
 import { Content } from '../content/content.model.js';
+import { STATUSES, STATUS_LABELS } from '../content/content.constants.js';
 import { Post } from '../posts/post.model.js';
 import { Client } from '../clients/client.model.js';
 import { Campaign } from '../campaigns/campaign.model.js';
@@ -52,53 +53,12 @@ function daysFromToday(ctx, date) {
 // ---------------------------------------------------------------- sections
 
 async function contentPipeline(ctx) {
-  const withPosts = ctx.modules.calendar.ready;
-  const pipeline = [{ $match: owned(ctx, { archivedAt: null }) }];
-  if (withPosts) {
-    pipeline.push(
-      {
-        $lookup: {
-          from: Post.collection.name,
-          let: { cid: '$_id', o: '$owner' },
-          pipeline: [
-            { $match: { $expr: { $and: [{ $eq: ['$content', '$$cid'] }, { $eq: ['$owner', '$$o'] }] } } },
-            { $project: { _id: 0, status: 1 } },
-          ],
-          as: 'posts',
-        },
-      },
-      {
-        $addFields: {
-          stage: {
-            $switch: {
-              branches: [
-                { case: { $in: ['published', '$posts.status'] }, then: 'published' },
-                { case: { $gt: [{ $size: { $setIntersection: ['$posts.status', ['scheduled', 'awaiting_confirmation']] } }, 0] }, then: 'scheduled' },
-              ],
-              default: '$status',
-            },
-          },
-        },
-      },
-    );
-  } else {
-    pipeline.push({ $addFields: { stage: '$status' } });
-  }
-  pipeline.push({ $group: { _id: '$stage', count: { $sum: 1 } } });
-
-  const counts = Object.fromEntries((await Content.aggregate(pipeline)).map((r) => [r._id, r.count]));
-  const stages = [
-    ['idea', 'Idea'],
-    ['drafting', 'Drafting'],
-    ['ready', 'Ready'],
-    ...(withPosts ? [['scheduled', 'Scheduled'], ['published', 'Published']] : []),
-  ].map(([key, label]) => ({ key, label, count: counts[key] ?? 0 }));
-
-  return {
-    stages,
-    total: stages.reduce((s, x) => s + x.count, 0),
-    note: withPosts ? null : 'Scheduled and Published stages appear once the Calendar module is available.',
-  };
+  // One count per workflow status (non-archived items). "Published" is a status the user declares; scheduled-but-unpublished
+  // content stays in its own stage, so this never claims something is live when it is only planned.
+  const rows = await Content.aggregate([{ $match: owned(ctx, { archivedAt: null }) }, { $group: { _id: '$status', count: { $sum: 1 } } }]);
+  const counts = Object.fromEntries(rows.map((r) => [r._id, r.count]));
+  const stages = STATUSES.map((key) => ({ key, label: STATUS_LABELS[key], count: counts[key] ?? 0 }));
+  return { stages, total: stages.reduce((sum, x) => sum + x.count, 0), note: null };
 }
 
 async function upcomingPosts(ctx) {

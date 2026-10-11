@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Badge, Button, Card, FormField, Input, Select } from '../../components/ui/index.js';
 import { FormError } from '../auth/AuthLayout.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
+import CalendarPrefsCard from './CalendarPrefsCard.jsx';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD', 'SGD', 'AED', 'JPY'];
 
@@ -36,7 +37,7 @@ function ProfileForm() {
 
   const zones = timezones();
   return (
-    <Card title="Profile" description="How you appear in CreatorDesk.">
+    <Card title="Profile" description="How you appear in CMS.">
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <FormError>{state.error}</FormError>
         <FormField label="Email" hint="Email cannot be changed yet.">
@@ -159,6 +160,7 @@ export default function SettingsPage() {
         </p>
       </div>
       <ProfileForm />
+      <CalendarPrefsCard />
       <PasswordForm />
       <SessionsCard />
     </div>
