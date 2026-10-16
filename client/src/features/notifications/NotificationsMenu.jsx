@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, BellRing, Flag, Send } from 'lucide-react';
+import { Bell, BellRing, Flag, Handshake, Send } from 'lucide-react';
 import { Button, EmptyState, ErrorState, Popover, Skeleton } from '../../components/ui/index.js';
 import { notificationsApi } from '../calendar/api.js';
 import { timeAgo } from '../dashboard/format.js';
 
 const POLL_MS = 60_000;
-const ICON = { post_reminder: BellRing, post_ready: Send, deadline_reminder: Flag };
+const ICON = { post_reminder: BellRing, post_ready: Send, deadline_reminder: Flag, followup_reminder: Handshake };
 
 /** In-app notifications (reminders, "time to publish", deadlines). Polls quietly; nothing is emailed or pushed. */
 export default function NotificationsMenu() {
@@ -32,7 +32,11 @@ export default function NotificationsMenu() {
       setState((s) => ({ ...s, unread: Math.max(0, s.unread - 1), items: s.items.map((x) => (x.id === n.id ? { ...x, read: true } : x)) }));
       notificationsApi.read(n.id).catch(load);
     }
-    navigate(n.entity.kind === 'post' ? `/calendar?post=${n.entity.id}${n.localDate ? `&date=${n.localDate}` : ''}` : `/content/${n.entity.id}`);
+    const target = {
+      post: `/calendar?post=${n.entity.id}${n.localDate ? `&date=${n.localDate}` : ''}`,
+      client: `/brands/${n.entity.id}`,
+    };
+    navigate(target[n.entity.kind] ?? `/content/${n.entity.id}`);
   }
 
   async function readAll() {
@@ -80,7 +84,7 @@ export default function NotificationsMenu() {
             ) : state.status === 'error' ? (
               <ErrorState title="Couldn’t load notifications" onRetry={load} />
             ) : state.items.length === 0 ? (
-              <EmptyState icon={Bell} title="No notifications" description="Reminders for scheduled posts and content deadlines will appear here." />
+              <EmptyState icon={Bell} title="No notifications" description="Reminders for scheduled posts, content deadlines and brand follow-ups will appear here." />
             ) : (
               <ul className="divide-y divide-slate-100">
                 {state.items.map((n) => {

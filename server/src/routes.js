@@ -10,6 +10,8 @@ import campaigns from './modules/campaigns/campaigns.routes.js';
 import posts from './modules/posts/posts.routes.js';
 import calendar from './modules/calendar/calendar.routes.js';
 import notifications from './modules/notifications/notifications.routes.js';
+import clients from './modules/clients/clients.routes.js';
+import communications from './modules/communications/communications.routes.js';
 
 const router = Router();
 
@@ -24,6 +26,8 @@ router.use('/campaigns', campaigns); // read-only lookup until the Campaigns mod
 router.use('/posts', posts);
 router.use('/calendar', calendar);
 router.use('/notifications', notifications);
+router.use('/clients', clients);
+router.use('/communications', communications);
 // Feature modules (content, clients, ...) are mounted here as they are built.
 
 export default router;

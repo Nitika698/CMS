@@ -39,15 +39,15 @@ const invoice = (o, cl, currency, totalMinor, status, dueDate) => Invoice.create
 const pay = (o, inv, amountMinor, paidAt) => Payment.create({ owner: o, invoice: inv._id, amountMinor, currency: inv.currency, paidAt });
 
 describe('modules that are not built yet', () => {
-  test('sections whose module is not built are "unavailable" (not zero) and carry no metrics; Content and Calendar are live', async () => {
+  test('sections whose module is not built are "unavailable" (not zero) and carry no metrics; Content, Calendar and Brands are live', async () => {
     const { token } = await signUp();
     const res = await request(app).get('/api/v1/dashboard').set(bearer(token));
     assert.equal(res.status, 200);
     const sections = Object.entries(res.body.sections);
     assert.equal(sections.length, 7);
     for (const [key, s] of sections) {
-      if (['contentPipeline', 'upcomingPosts'].includes(key)) {
-        assert.equal(s.state, 'ok'); // the Content and Calendar modules are implemented
+      if (['contentPipeline', 'upcomingPosts', 'recentActivity'].includes(key)) {
+        assert.equal(s.state, 'ok'); // the Content, Calendar and Brands (CRM) modules are implemented
         continue;
       }
       assert.equal(s.state, 'unavailable', key);

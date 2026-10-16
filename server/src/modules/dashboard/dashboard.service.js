@@ -6,17 +6,17 @@ import { STATUSES, STATUS_LABELS } from '../content/content.constants.js';
 import { Post } from '../posts/post.model.js';
 import { Client } from '../clients/client.model.js';
 import { Campaign } from '../campaigns/campaign.model.js';
+import { ACTIVE_CAMPAIGN } from '../campaigns/campaign.constants.js';
 import { Deliverable } from '../campaigns/deliverable.model.js';
 import { Task } from '../tasks/task.model.js';
 import { Communication } from '../communications/communication.model.js';
 import { Invoice } from '../invoices/invoice.model.js';
 import { Payment } from '../invoices/payment.model.js';
+import { agreedByCurrency, invoiceTotals } from '../invoices/invoice.aggregates.js';
 import { DEFINITIONS, UPCOMING_DAYS } from './dashboard.definitions.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 const LIST = 6;
-const ACTIVE_CAMPAIGN = ['confirmed', 'in_progress'];
-const AGREED_CAMPAIGN = ['confirmed', 'in_progress', 'delivered', 'completed'];
 const FINISHED_CAMPAIGN = ['cancelled', 'completed'];
 const OPEN_DELIVERABLE = ['pending', 'in_progress', 'submitted', 'changes_requested'];
 const OPEN_TASK = ['todo', 'doing'];
@@ -166,38 +166,10 @@ async function reviews(ctx) {
 }
 
 async function payments(ctx) {
-  const sent = owned(ctx, { status: 'sent' });
+  // The agreed / invoiced / collected / outstanding rules live in ONE place, shared with the client page.
   const [agreedRows, invoiceRows, monthRows] = await Promise.all([
-    Campaign.aggregate([
-      { $match: owned(ctx, { archivedAt: null, status: { $in: AGREED_CAMPAIGN }, 'fee.amountMinor': { $type: 'number' } }) },
-      { $group: { _id: '$fee.currency', agreed: { $sum: '$fee.amountMinor' } } },
-    ]),
-    Invoice.aggregate([
-      { $match: sent },
-      {
-        $lookup: {
-          from: Payment.collection.name,
-          let: { iid: '$_id', o: '$owner' },
-          pipeline: [
-            { $match: { $expr: { $and: [{ $eq: ['$invoice', '$$iid'] }, { $eq: ['$owner', '$$o'] }] } } },
-            { $group: { _id: null, paid: { $sum: '$amountMinor' } } },
-          ],
-          as: 'p',
-        },
-      },
-      { $addFields: { paid: { $ifNull: [{ $arrayElemAt: ['$p.paid', 0] }, 0] } } },
-      { $addFields: { balance: { $max: [0, { $subtract: ['$totalMinor', '$paid'] }] } } },
-      {
-        $group: {
-          _id: '$currency',
-          invoiced: { $sum: '$totalMinor' },
-          collected: { $sum: '$paid' },
-          outstanding: { $sum: '$balance' },
-          overdue: { $sum: { $cond: [{ $and: [{ $lt: ['$dueDate', ctx.today.start] }, { $gt: ['$balance', 0] }] }, '$balance', 0] } },
-          openInvoices: { $sum: { $cond: [{ $gt: ['$balance', 0] }, 1, 0] } },
-        },
-      },
-    ]),
+    agreedByCurrency(ctx.owner),
+    invoiceTotals(ctx.owner, ctx.today.start),
     Payment.aggregate([
       { $match: owned(ctx, { paidAt: { $gte: ctx.month.start, $lt: ctx.month.end } }) },
       { $lookup: { from: Invoice.collection.name, localField: 'invoice', foreignField: '_id', as: 'inv' } },

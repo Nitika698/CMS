@@ -96,6 +96,12 @@ The server refuses to start with an invalid environment and prints which variabl
 | POST | `/posts/:id/transition` | Controlled state changes: schedule, ready, published (user-confirmed), missed, cancelled |
 | POST | `/posts/:id/publish-via-platform` | Future direct publishing. Returns **501** until a platform adapter is registered (none are) |
 | GET / POST | `/notifications`, `/notifications/read-all`, `/notifications/:id/read` | In-app reminders |
+| GET / POST | `/clients`, `/clients/meta` | List (search, filters, sort, pagination) and create brands/clients |
+| GET / PATCH / DELETE | `/clients/:id` | Detail with derived summary; edit (needs `version`); permanent delete (archived, nothing attached) |
+| POST | `/clients/:id/archive`, `/clients/:id/restore` | Archive (returns warnings for active campaigns / unpaid invoices) and restore |
+| GET | `/clients/:id/campaigns`, `/clients/:id/invoices` | Read-through lists of the brand's campaigns and invoices |
+| GET / POST | `/clients/:id/communications` | Saved discussions with a brand |
+| GET / PATCH / DELETE | `/communications/:id` | One saved discussion |
 
 ### Content module
 - **Workflow:** Idea > Planning > Creation > Review > Approved > Published. Only listed moves are allowed (`server/src/modules/content/content.constants.js` is the single source; the UI reads it from `/content/meta`). Sending to Review needs a caption or a file. **Rejecting** (Review > Creation) needs a comment, starts a new revision and withdraws any approval. **Published** means *you* confirmed it is live (time not in the future); CMS does not check the platform, and published content is locked except tags and the link.
@@ -119,6 +125,16 @@ CMS **does not publish to Instagram, YouTube, TikTok or any other network.** The
 - **Reminders:** per-entry lead times plus defaults in Settings; deadline reminders use the end of the deadline day in the user's timezone. An in-process job (`REMINDER_SWEEP_SECONDS`) delivers **in-app notifications only** (the bell). Every notification has a unique key, so sweeps are idempotent, safe on several servers, and rescheduling re-arms them.
 - **Views:** month, week, day (and a phone-friendly agenda), filters by platform, category, campaign, entry state and content status, drag-and-drop rescheduling on desktop pointers (touch screens use the edit dialog), and every entry links to its content (and back from the content page).
 - **Future publishing:** `server/src/integrations/publishing/` defines the adapter contract (`adapter.js`), a registry that is **empty by design**, and the only code path allowed to mark a post platform-published (`publishing.service.js`). To add a network, implement and test the adapter against the platform's real, authorised API and register it there; nothing else changes.
+
+### Brands & clients (CRM)
+Sidebar **Brands**. Each record holds contact people (exactly one primary), website and social links, industry and category, contact preferences, collaboration notes, negotiated reference rates (integer minor units + currency), payment terms, exclusivity/usage terms, and a follow-up date. Everything is owner-scoped; another user's id returns 404.
+- **Nothing is duplicated.** Campaigns, invoices and payments are never copied onto the brand. The detail page reads them through references (`client` on campaigns and invoices), and `lastContact`, discussion counts, active-campaign counts and agreed/invoiced/collected/outstanding figures are **derived** on every request. The money rules are shared with the dashboard (`invoice.aggregates.js`), so both screens always agree. Totals are per currency, never summed across currencies.
+- **Until Campaigns and Payments exist** those tabs say "Not available yet" rather than showing a made-up zero (module flags in `server/src/config/modules.js`).
+- **Saved discussions** are notes you write about a conversation (email, call, meeting, DM...). CMS does not send or receive messages. Times are entered in your profile timezone and cannot be in the future; a discussion may only link a campaign and a contact belonging to the same brand.
+- **Archive, then delete.** Archiving hides a brand but keeps its history, and warns if campaigns are active or invoices unpaid. Permanent delete needs the brand archived first and is refused while campaigns or invoices still point at it. Names are unique per user among non-archived brands (case-insensitive).
+- **Follow-ups:** the reminder job creates one in-app notification ("Follow up with ...") at the start of the follow-up day in your timezone (`followUpReminders` in the sweep stats). No email is sent.
+- **Concurrency:** edits send the brand's `version`; a stale edit is refused (409) instead of overwriting.
+- Search is a literal, escaped text match across name, contacts, email, industry, category and notes; it is never evaluated as a regular expression.
 
 ### Dashboard
 `GET /api/v1/dashboard` returns seven independent sections (content pipeline, upcoming posts, campaigns & deadlines, tasks, pending reviews, payments, recent activity) plus a `definitions` block stating, for every metric, whether it is a **count**, an **amount** (integer minor units, per currency, never summed across currencies) or a **duration**, and the **time period** it covers. "Today" and "this month" use the user's profile timezone. Each section is `ok`, `unavailable` or `error`:
@@ -158,7 +174,7 @@ docs/PLAN.md               requirements, data model, API plan, roadmap
 ```
 
 ## Not implemented yet (intentionally)
-Email verification / password reset, every business module (content, calendar, brands, campaigns, tasks, communications, payments), media uploads, notifications, global search, AI features. Notifications and the search entry point are labelled placeholders. Each module page shows its planned roadmap phase.
+Email verification / password reset, the campaigns, tasks and payments modules, a full communications inbox (saved discussions are managed from each brand), global search and AI features. The search entry point and the unbuilt module pages are labelled placeholders showing their planned roadmap phase.
 
 ## Troubleshooting
 - **Port already in use:** change `PORT` in `server/.env` and `DEV_API_TARGET` in `client/.env`. Vite automatically picks another port if 5173 is taken.

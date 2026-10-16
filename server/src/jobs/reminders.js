@@ -1,4 +1,5 @@
 import { formatLocal, zonedMidnight } from '../lib/timezone.js';
+import { Client } from '../modules/clients/client.model.js';
 import { Content } from '../modules/content/content.model.js';
 import { STATUS_LABELS } from '../modules/content/content.constants.js';
 import { notifyOnce } from '../modules/notifications/notifications.service.js';
@@ -26,7 +27,7 @@ const human = (minutes) => {
  * `now` is injectable for tests. Reminders are IN-APP only. Nothing here posts to any network.
  */
 export async function runReminderSweep(now = new Date()) {
-  const stats = { postReminders: 0, postsReady: 0, deadlineReminders: 0 };
+  const stats = { postReminders: 0, postsReady: 0, deadlineReminders: 0, followUpReminders: 0 };
 
   // ---- 1. reminders before a scheduled post (offsets chosen per post)
   const upcoming = await Post.find({
@@ -124,6 +125,31 @@ export async function runReminderSweep(now = new Date()) {
       });
       if (created) stats.deadlineReminders += 1;
     }
+  }
+
+  // ---- 4. brand follow-ups: a notice at the start of the follow-up day in the user's timezone (once)
+  const followUps = await Client.find({
+    archivedAt: null,
+    followUpAt: { $gte: new Date(now.getTime() - 3 * DAY), $lt: new Date(now.getTime() + 2 * DAY) },
+  })
+    .select('owner name followUpAt followUpNote')
+    .lean();
+  for (const c of followUps) {
+    const user = await userFor(c.owner);
+    if (!user) continue;
+    const [y, m, d] = c.followUpAt.toISOString().slice(0, 10).split('-').map(Number);
+    const startsAt = zonedMidnight(y, m, d, user.timezone || 'UTC').getTime();
+    if (startsAt > now.getTime() || startsAt < now.getTime() - RANGE_REMINDER_STALE_MS * 2) continue; // not yet, or long past
+    const created = await notifyOnce({
+      owner: c.owner,
+      type: 'followup_reminder',
+      title: `Follow up with ${c.name}`,
+      body: c.followUpNote || 'You planned to follow up with this brand today.',
+      entity: { kind: 'client', id: c._id },
+      localDate: c.followUpAt.toISOString().slice(0, 10),
+      dedupeKey: `followup:${c._id}:${c.followUpAt.getTime()}`,
+    });
+    if (created) stats.followUpReminders += 1;
   }
   return stats;
 }
