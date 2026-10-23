@@ -9,11 +9,13 @@ import { StatusBadge } from './ClientsLibraryPage.jsx';
 import { CollaborationsTab, DiscussionsTab, InvoicesTab, OverviewTab } from './ClientTabs.jsx';
 import { TYPE_LABEL } from './constants.js';
 import FollowUpDialog from './FollowUpDialog.jsx';
+import LinkedTasks from '../tasks/LinkedTasks.jsx';
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'collaborations', label: 'Collaborations' },
   { key: 'discussions', label: 'Discussions' },
+  { key: 'tasks', label: 'Tasks' },
   { key: 'invoices', label: 'Invoices' },
 ];
 
@@ -173,6 +175,7 @@ export default function ClientDetailPage() {
         {tab === 'overview' && <OverviewTab c={c} />}
         {tab === 'collaborations' && <CollaborationsTab clientId={id} summary={s} />}
         {tab === 'discussions' && <DiscussionsTab client={c} onChanged={load} />}
+        {tab === 'tasks' && <LinkedTasks kind="client" id={id} />}
         {tab === 'invoices' && <InvoicesTab clientId={id} />}
       </div>
 

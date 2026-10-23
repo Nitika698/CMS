@@ -14,6 +14,10 @@ import CalendarPage from '../features/calendar/CalendarPage.jsx';
 import ClientsLibraryPage from '../features/clients/ClientsLibraryPage.jsx';
 import ClientFormPage from '../features/clients/ClientFormPage.jsx';
 import ClientDetailPage from '../features/clients/ClientDetailPage.jsx';
+import CampaignsLibraryPage from '../features/campaigns/CampaignsLibraryPage.jsx';
+import CampaignFormPage from '../features/campaigns/CampaignFormPage.jsx';
+import CampaignDetailPage from '../features/campaigns/CampaignDetailPage.jsx';
+import TasksPage from '../features/tasks/TasksPage.jsx';
 import { ToastProvider } from '../components/ui/index.js';
 import PlaceholderPage from '../pages/PlaceholderPage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
@@ -42,7 +46,12 @@ export default function App() {
             <Route path="/brands/new" element={<ClientFormPage mode="create" />} />
             <Route path="/brands/:id" element={<ClientDetailPage />} />
             <Route path="/brands/:id/edit" element={<ClientFormPage mode="edit" />} />
-            {NAV_ITEMS.filter((i) => !['/dashboard', '/content', '/calendar', '/brands'].includes(i.path)).map((item) => (
+            <Route path="/campaigns" element={<CampaignsLibraryPage />} />
+            <Route path="/campaigns/new" element={<CampaignFormPage mode="create" />} />
+            <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
+            <Route path="/campaigns/:id/edit" element={<CampaignFormPage mode="edit" />} />
+            <Route path="/tasks" element={<TasksPage />} />
+            {NAV_ITEMS.filter((i) => !['/dashboard', '/content', '/calendar', '/brands', '/campaigns', '/tasks'].includes(i.path)).map((item) => (
               <Route key={item.path} path={`${item.path}/*`} element={<PlaceholderPage item={item} />} />
             ))}
             <Route path="/settings" element={<SettingsPage />} />

@@ -200,7 +200,7 @@ export default function ContentFormPage({ mode }) {
             </div>
           )}
           <div className="sm:col-span-2">
-            <FormField label="Campaign" error={err('campaign')} hint={campaigns.length === 0 ? 'No campaigns yet. Campaigns are created in the Campaigns module (coming soon); once you have some, you can link content here.' : 'Optional: connect this content to a brand campaign.'}>
+            <FormField label="Campaign" error={err('campaign')} hint={campaigns.length === 0 ? 'No campaigns yet. Create one under Campaigns, then you can link content to it here.' : 'Optional: connect this content to a brand campaign.'}>
               {(p) => (
                 <Select value={form.campaign} onChange={set('campaign')} disabled={disabledMain || (campaigns.length === 0 && !form.campaign)} {...p}>
                   <option value="">No campaign</option>

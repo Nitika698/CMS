@@ -9,7 +9,7 @@ export const MODULES = {
   content: { ready: true, phase: 'Roadmap P2', label: 'Content' },
   calendar: { ready: true, phase: 'Roadmap P3', label: 'Calendar' },
   crm: { ready: true, phase: 'Roadmap P4', label: 'Brands & communications' },
-  campaigns: { ready: false, phase: 'Roadmap P5', label: 'Campaigns' },
-  tasks: { ready: false, phase: 'Roadmap P6', label: 'Tasks' },
+  campaigns: { ready: true, phase: 'Roadmap P5', label: 'Campaigns' },
+  tasks: { ready: true, phase: 'Roadmap P6', label: 'Tasks' },
   payments: { ready: false, phase: 'Roadmap P7', label: 'Payments' },
 };

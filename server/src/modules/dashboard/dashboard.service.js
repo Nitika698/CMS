@@ -6,9 +6,9 @@ import { STATUSES, STATUS_LABELS } from '../content/content.constants.js';
 import { Post } from '../posts/post.model.js';
 import { Client } from '../clients/client.model.js';
 import { Campaign } from '../campaigns/campaign.model.js';
-import { ACTIVE_CAMPAIGN } from '../campaigns/campaign.constants.js';
+import { ACTIVE_CAMPAIGN, OPEN_DELIVERABLE } from '../campaigns/campaign.constants.js';
 import { Deliverable } from '../campaigns/deliverable.model.js';
-import { Task } from '../tasks/task.model.js';
+import { bucketTasks } from '../tasks/tasks.service.js';
 import { Communication } from '../communications/communication.model.js';
 import { Invoice } from '../invoices/invoice.model.js';
 import { Payment } from '../invoices/payment.model.js';
@@ -18,8 +18,6 @@ import { DEFINITIONS, UPCOMING_DAYS } from './dashboard.definitions.js';
 const DAY = 24 * 60 * 60 * 1000;
 const LIST = 6;
 const FINISHED_CAMPAIGN = ['cancelled', 'completed'];
-const OPEN_DELIVERABLE = ['pending', 'in_progress', 'submitted', 'changes_requested'];
-const OPEN_TASK = ['todo', 'doing'];
 
 const id = (v) => (v ? String(v) : null);
 
@@ -131,17 +129,17 @@ async function campaigns(ctx) {
 }
 
 async function tasks(ctx) {
-  const open = owned(ctx, { archivedAt: null, status: { $in: OPEN_TASK } });
-  const today = { ...open, dueAt: { $gte: ctx.today.start, $lt: ctx.today.end } };
-  const overdue = { ...open, dueAt: { $lt: ctx.today.start } };
-  const shape = (t) => ({ id: id(t._id), title: t.title, dueAt: t.dueAt, priority: t.priority, status: t.status, campaignId: id(t.links?.campaign) });
-  const [dueTodayCount, overdueCount, dueToday, overdueRows] = await Promise.all([
-    Task.countDocuments(today),
-    Task.countDocuments(overdue),
-    Task.find(today).sort({ dueAt: 1 }).limit(LIST).lean(),
-    Task.find(overdue).sort({ dueAt: 1 }).limit(LIST).lean(),
-  ]);
-  return { dueTodayCount, overdueCount, dueToday: dueToday.map(shape), overdue: overdueRows.map(shape) };
+  // Same buckets as the tasks page (task.logic.js): a task is in exactly one of overdue / due today / upcoming.
+  const shape = (t) => ({ id: id(t._id), title: t.title, dueAt: t.dueAt, dueHasTime: !!t.dueHasTime, priority: t.priority, status: t.status, campaignId: id(t.links?.campaign) });
+  const b = await bucketTasks({ owner: ctx.owner, tz: ctx.tz, now: ctx.now }, { limit: LIST, shape });
+  return {
+    dueTodayCount: b.today.count,
+    overdueCount: b.overdue.count,
+    upcomingCount: b.upcoming.count,
+    dueToday: b.today.rows,
+    overdue: b.overdue.rows,
+    upcoming: b.upcoming.rows,
+  };
 }
 
 async function reviews(ctx) {

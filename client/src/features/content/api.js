@@ -28,5 +28,5 @@ export const contentApi = {
   accessLink: (assetId) => api(`/media/${assetId}/access`),
   categories: () => api('/categories'),
   createCategory: (name) => api('/categories', { method: 'POST', body: { name } }),
-  campaigns: () => api('/campaigns'),
+  campaigns: () => api('/campaigns/lookup'),
 };

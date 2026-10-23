@@ -236,14 +236,13 @@ describe('references are validated against the owner', () => {
     assert.equal(await Category.countDocuments(), 0);
   });
 
-  test('GET /campaigns is a read-only, owner-scoped lookup', async () => {
+  test('GET /campaigns is owner-scoped', async () => {
     const a = await signUp();
     const b = await signUp();
     await makeCampaign(a.user.id, 'Alpha');
     await makeCampaign(b.user.id, 'Bravo');
     const res = await request(app).get('/api/v1/campaigns').set(bearer(a.token));
     assert.deepEqual(res.body.data.map((c) => c.title), ['Alpha']);
-    assert.equal((await request(app).post('/api/v1/campaigns').set(bearer(a.token)).send({ title: 'x' })).status, 404);
   });
 });
 

@@ -4,6 +4,7 @@ import { isObjectId, notFound } from '../../lib/scoped.js';
 import { getStorage } from '../../integrations/storage/index.js';
 import { Category } from '../categories/category.model.js';
 import { Campaign } from '../campaigns/campaign.model.js';
+import { Deliverable } from '../campaigns/deliverable.model.js';
 import { Client } from '../clients/client.model.js';
 import { MediaAsset, toPublicAsset } from '../media/media-asset.model.js';
 import { Post } from '../posts/post.model.js';
@@ -235,6 +236,9 @@ export async function updateContent(userId, id, input) {
   }
 
   await checkRefs(userId, input);
+  if ('campaign' in input && String(input.campaign ?? '') !== String(doc.campaign ?? '') && (await Deliverable.exists({ owner: userId, content: doc._id }))) {
+    throw new AppError(409, 'CONTENT_IN_USE', 'This content is attached to a campaign deliverable. Detach it from the deliverable before changing its campaign.');
+  }
 
   const changes = [];
   for (const [key, value] of Object.entries(input)) {
@@ -351,5 +355,6 @@ export async function deleteContent(userId, id) {
   await MediaAsset.deleteMany({ owner: userId, content: doc._id });
   await ContentEvent.deleteMany({ owner: userId, content: doc._id });
   await Task.updateMany({ owner: userId, 'links.content': doc._id }, { $set: { 'links.content': null } });
+  await Deliverable.updateMany({ owner: userId, content: doc._id }, { $set: { content: null } });
   await Content.deleteOne({ _id: doc._id, owner: userId });
 }

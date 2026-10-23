@@ -4,6 +4,7 @@ import { AlertTriangle, ArchiveRestore, ArrowLeft, Archive, CheckCircle2, Extern
 import { Badge, Button, Card, ErrorState, Modal, Skeleton, useToast } from '../../components/ui/index.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import LinkedPosts from '../calendar/LinkedPosts.jsx';
+import LinkedTasks from '../tasks/LinkedTasks.jsx';
 import AssetsPanel from './AssetsPanel.jsx';
 import { contentApi } from './api.js';
 import { platformLabel, typeLabel } from './constants.js';
@@ -19,6 +20,7 @@ const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'assets', label: 'Files' },
   { key: 'review', label: 'Review' },
+  { key: 'tasks', label: 'Tasks' },
   { key: 'history', label: 'History' },
 ];
 
@@ -311,6 +313,7 @@ export default function ContentDetailPage() {
         {tab === 'overview' && <Overview c={c} tz={user.timezone} refreshKey={refreshKey} />}
         {tab === 'assets' && <AssetsPanel content={c} meta={meta} canEdit={canEdit} onChanged={changed} />}
         {tab === 'review' && <ReviewPanel content={c} refreshKey={refreshKey} onChanged={changed} />}
+        {tab === 'tasks' && <LinkedTasks kind="content" id={c.id} />}
         {tab === 'history' && <HistoryPanel content={c} meta={meta} refreshKey={refreshKey} />}
       </div>
 

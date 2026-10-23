@@ -12,7 +12,7 @@ export function startJobs({ log = console } = {}) {
     running = true;
     try {
       const stats = await runReminderSweep();
-      if (stats.postReminders || stats.postsReady || stats.deadlineReminders) log.log(`[jobs] reminders sent: ${JSON.stringify(stats)}`);
+      if (stats.postReminders || stats.postsReady || stats.deadlineReminders || stats.campaignReminders || stats.followUpReminders || stats.taskReminders || stats.taskOverdue) log.log(`[jobs] reminders sent: ${JSON.stringify(stats)}`);
     } catch (err) {
       log.error(`[jobs] reminder sweep failed: ${err.name}`);
     } finally {

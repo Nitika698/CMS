@@ -30,12 +30,12 @@ export const DEFINITIONS = {
   tasksDueToday: {
     kind: 'count',
     period: 'today (your timezone)',
-    text: 'Open tasks (To do / Doing) due at any time during today, in your profile timezone.',
+    text: 'Open tasks (To do / Doing) due today in your profile timezone and not yet late: a task with only a date is due all day, a task with a time is due until that time passes.',
   },
   tasksOverdue: {
     kind: 'count',
     period: 'before today (your timezone)',
-    text: 'Open tasks whose due time is before the start of today. Tasks due earlier today count as "due today", never both.',
+    text: 'Open tasks that are late: their due time has passed, or (for tasks with only a date) their due day has ended. A task is never both overdue and due today.',
   },
   pendingReviews: {
     kind: 'count',

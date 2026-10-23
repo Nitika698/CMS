@@ -1,10 +1,15 @@
 import { formatLocal, zonedMidnight } from '../lib/timezone.js';
+import { Campaign } from '../modules/campaigns/campaign.model.js';
+import { Deliverable } from '../modules/campaigns/deliverable.model.js';
 import { Client } from '../modules/clients/client.model.js';
 import { Content } from '../modules/content/content.model.js';
 import { STATUS_LABELS } from '../modules/content/content.constants.js';
 import { notifyOnce } from '../modules/notifications/notifications.service.js';
 import { MAX_REMINDER_MINUTES, RANGE_REMINDER_STALE_MS } from '../modules/posts/post.constants.js';
 import { Post } from '../modules/posts/post.model.js';
+import { OPEN_TASK } from '../modules/tasks/task.constants.js';
+import { reminderReference } from '../modules/tasks/task.logic.js';
+import { Task } from '../modules/tasks/task.model.js';
 import { User } from '../modules/users/user.model.js';
 
 const MIN = 60_000;
@@ -27,7 +32,7 @@ const human = (minutes) => {
  * `now` is injectable for tests. Reminders are IN-APP only. Nothing here posts to any network.
  */
 export async function runReminderSweep(now = new Date()) {
-  const stats = { postReminders: 0, postsReady: 0, deadlineReminders: 0, followUpReminders: 0 };
+  const stats = { postReminders: 0, postsReady: 0, deadlineReminders: 0, followUpReminders: 0, campaignReminders: 0, taskReminders: 0, taskOverdue: 0 };
 
   // ---- 1. reminders before a scheduled post (offsets chosen per post)
   const upcoming = await Post.find({
@@ -150,6 +155,83 @@ export async function runReminderSweep(now = new Date()) {
       dedupeKey: `followup:${c._id}:${c.followUpAt.getTime()}`,
     });
     if (created) stats.followUpReminders += 1;
+  }
+
+  // ---- 5. campaign deadlines: same lead times as content deadlines, until the campaign is handed over (delivered)
+  const campaigns = await Campaign.find({
+    archivedAt: null,
+    status: { $in: ['proposed', 'negotiating', 'confirmed', 'in_progress'] },
+    deadline: { $gte: new Date(now.getTime() - 3 * DAY), $lt: new Date(now.getTime() + 33 * DAY) },
+  })
+    .select('owner title status deadline')
+    .lean();
+  for (const c of campaigns) {
+    const user = await userFor(c.owner);
+    if (!user) continue;
+    const tz = user.timezone || 'UTC';
+    const day = formatLocal(c.deadline, tz).date; // deadlines are local-midnight instants
+    const [y, m, d] = day.split('-').map(Number);
+    const dueAt = zonedMidnight(y, m, d + 1, tz).getTime();
+    const open = await Deliverable.countDocuments({ owner: c.owner, campaign: c._id, status: { $ne: 'delivered' } });
+    for (const offset of user.calendarPrefs?.deadlineReminderOffsets ?? [1440]) {
+      const fireAt = dueAt - offset * MIN;
+      if (fireAt > now.getTime() || dueAt < now.getTime() - RANGE_REMINDER_STALE_MS) continue;
+      const created = await notifyOnce({
+        owner: c.owner,
+        type: 'campaign_deadline',
+        title: `Campaign deadline ${dueAt <= now.getTime() ? 'passed' : `in ${human(Math.max(1, Math.round((dueAt - now.getTime()) / MIN)))}`}: ${c.title}`,
+        body: `Due ${day}. ${open ? `${plural(open, 'deliverable')} not published yet.` : 'Everything is published.'}`,
+        entity: { kind: 'campaign', id: c._id },
+        localDate: day,
+        dedupeKey: `campaign:${c._id}:remind${offset}:${c.deadline.getTime()}`,
+      });
+      if (created) stats.campaignReminders += 1;
+    }
+  }
+
+  // ---- 6. tasks: lead-time reminders chosen per task, then one notice when it turns overdue. Only open, unarchived tasks.
+  // Date-only tasks count back from the END of their due day in the owner's timezone. Keys include the due instant, so
+  // moving a task re-arms its reminders while a repeated sweep (or a second server) sends nothing twice.
+  const tasks = await Task.find({
+    archivedAt: null,
+    status: { $in: OPEN_TASK },
+    dueAt: { $gte: new Date(now.getTime() - 4 * DAY), $lt: new Date(now.getTime() + 32 * DAY) },
+  })
+    .select('owner title dueAt dueHasTime remindOffsets priority')
+    .lean();
+  for (const t of tasks) {
+    const user = await userFor(t.owner);
+    if (!user) continue;
+    const tz = user.timezone || 'UTC';
+    const ref = reminderReference(t, tz).getTime();
+    const local = formatLocal(t.dueAt, tz);
+    const when = t.dueHasTime ? `${local.time} on ${local.date}` : local.date;
+    if (ref > now.getTime()) {
+      for (const offset of t.remindOffsets ?? []) {
+        if (ref - offset * MIN > now.getTime()) continue; // not yet
+        const created = await notifyOnce({
+          owner: t.owner,
+          type: 'task_reminder',
+          title: `Task due in ${human(Math.max(1, Math.round((ref - now.getTime()) / MIN)))}: ${t.title}`,
+          body: `Due ${when}.`,
+          entity: { kind: 'task', id: t._id },
+          localDate: local.date,
+          dedupeKey: `task:${t._id}:remind${offset}:${t.dueAt.getTime()}`,
+        });
+        if (created) stats.taskReminders += 1;
+      }
+    } else if (ref >= now.getTime() - 3 * DAY) {
+      const created = await notifyOnce({
+        owner: t.owner,
+        type: 'task_overdue',
+        title: `Task overdue: ${t.title}`,
+        body: `Was due ${when}.`,
+        entity: { kind: 'task', id: t._id },
+        localDate: local.date,
+        dedupeKey: `task:${t._id}:overdue:${t.dueAt.getTime()}`,
+      });
+      if (created) stats.taskOverdue += 1;
+    }
   }
   return stats;
 }

@@ -49,3 +49,24 @@ export function invoiceTotals(owner, todayStart, extraMatch = {}) {
     },
   ]);
 }
+
+/** Invoices (newest first) with what has been paid so far, for any owner-scoped match such as `{ campaign }`. */
+export function invoicesWithPaid(owner, match, limit = 200) {
+  return Invoice.aggregate([
+    { $match: { owner, ...match } },
+    {
+      $lookup: {
+        from: Payment.collection.name,
+        let: { iid: '$_id', o: '$owner' },
+        pipeline: [
+          { $match: { $expr: { $and: [{ $eq: ['$invoice', '$$iid'] }, { $eq: ['$owner', '$$o'] }] } } },
+          { $group: { _id: null, paid: { $sum: '$amountMinor' } } },
+        ],
+        as: 'p',
+      },
+    },
+    { $addFields: { paidMinor: { $ifNull: [{ $arrayElemAt: ['$p.paid', 0] }, 0] } } },
+    { $sort: { issueDate: -1, createdAt: -1 } },
+    { $limit: limit },
+  ]);
+}

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, BellRing, Flag, Handshake, Send } from 'lucide-react';
+import { Bell, BellRing, CheckSquare, Flag, Handshake, Send } from 'lucide-react';
 import { Button, EmptyState, ErrorState, Popover, Skeleton } from '../../components/ui/index.js';
 import { notificationsApi } from '../calendar/api.js';
 import { timeAgo } from '../dashboard/format.js';
 
 const POLL_MS = 60_000;
-const ICON = { post_reminder: BellRing, post_ready: Send, deadline_reminder: Flag, followup_reminder: Handshake };
+const ICON = { post_reminder: BellRing, post_ready: Send, deadline_reminder: Flag, campaign_deadline: Flag, followup_reminder: Handshake, task_reminder: CheckSquare, task_overdue: CheckSquare };
 
 /** In-app notifications (reminders, "time to publish", deadlines). Polls quietly; nothing is emailed or pushed. */
 export default function NotificationsMenu() {
@@ -35,6 +35,8 @@ export default function NotificationsMenu() {
     const target = {
       post: `/calendar?post=${n.entity.id}${n.localDate ? `&date=${n.localDate}` : ''}`,
       client: `/brands/${n.entity.id}`,
+      campaign: `/campaigns/${n.entity.id}`,
+      task: `/tasks?task=${n.entity.id}`,
     };
     navigate(target[n.entity.kind] ?? `/content/${n.entity.id}`);
   }

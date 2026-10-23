@@ -12,6 +12,7 @@ import calendar from './modules/calendar/calendar.routes.js';
 import notifications from './modules/notifications/notifications.routes.js';
 import clients from './modules/clients/clients.routes.js';
 import communications from './modules/communications/communications.routes.js';
+import tasks from './modules/tasks/tasks.routes.js';
 
 const router = Router();
 
@@ -22,12 +23,13 @@ router.use('/categories', categories);
 router.use('/dashboard', dashboard);
 router.use('/content', content);
 router.use('/media', media);
-router.use('/campaigns', campaigns); // read-only lookup until the Campaigns module ships
+router.use('/campaigns', campaigns);
 router.use('/posts', posts);
 router.use('/calendar', calendar);
 router.use('/notifications', notifications);
 router.use('/clients', clients);
 router.use('/communications', communications);
+router.use('/tasks', tasks);
 // Feature modules (content, clients, ...) are mounted here as they are built.
 
 export default router;

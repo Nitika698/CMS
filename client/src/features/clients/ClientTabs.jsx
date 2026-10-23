@@ -152,7 +152,7 @@ export function CollaborationsTab({ clientId, summary }) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white">
         {data.available ? (
-          <EmptyState icon={Handshake} title="No collaborations yet" description="Campaigns you run with this brand will be listed here, grouped by where they are." />
+          <EmptyState icon={Handshake} title="No collaborations yet" description="Campaigns you run with this brand will be listed here, grouped by where they are." action={<Link to={`/campaigns/new?client=${clientId}`}><Button icon={Plus}>New campaign</Button></Link>} />
         ) : (
           <Unavailable what="Campaigns linked to this brand" phase={data.phase} />
         )}
