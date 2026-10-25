@@ -13,6 +13,7 @@ import notifications from './modules/notifications/notifications.routes.js';
 import clients from './modules/clients/clients.routes.js';
 import communications from './modules/communications/communications.routes.js';
 import tasks from './modules/tasks/tasks.routes.js';
+import invoices from './modules/invoices/invoices.routes.js';
 
 const router = Router();
 
@@ -30,6 +31,7 @@ router.use('/notifications', notifications);
 router.use('/clients', clients);
 router.use('/communications', communications);
 router.use('/tasks', tasks);
+router.use('/invoices', invoices);
 // Feature modules (content, clients, ...) are mounted here as they are built.
 
 export default router;

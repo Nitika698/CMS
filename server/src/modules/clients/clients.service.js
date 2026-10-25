@@ -10,6 +10,7 @@ import { agreedByCurrency, invoiceTotals } from '../invoices/invoice.aggregates.
 import { Invoice } from '../invoices/invoice.model.js';
 import { Payment } from '../invoices/payment.model.js';
 import { Task } from '../tasks/task.model.js';
+import { displayStatusOf } from '../invoices/invoice.logic.js';
 import { Client } from './client.model.js';
 import { CLIENT_STATUSES, CLIENT_TYPES, CHANNELS, COMMON_CATEGORIES, LIMITS, RATE_UNITS, SOCIAL_PLATFORMS } from './clients.constants.js';
 
@@ -286,12 +287,7 @@ export async function listClientInvoices(user, id, now = new Date()) {
 
   const data = rows.map((r) => {
     const balance = Math.max(0, r.totalMinor - r.paidMinor);
-    let displayStatus = r.status;
-    if (r.status === 'sent') {
-      if (balance === 0) displayStatus = 'paid';
-      else if (r.dueDate && r.dueDate < todayStart) displayStatus = 'overdue';
-      else if (r.paidMinor > 0) displayStatus = 'partially_paid';
-    }
+    const displayStatus = displayStatusOf(r, r.paidMinor, todayStart);
     return {
       id: String(r._id), number: r.number, status: r.status, displayStatus, currency: r.currency,
       totalMinor: r.totalMinor, paidMinor: r.paidMinor, balanceMinor: r.status === 'sent' ? balance : 0,

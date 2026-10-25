@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Badge, Button, Card, FormField, Input, Select } from '../../components/ui/index.js';
 import { FormError } from '../auth/AuthLayout.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
+import BusinessProfileCard from './BusinessProfileCard.jsx';
 import CalendarPrefsCard from './CalendarPrefsCard.jsx';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD', 'SGD', 'AED', 'JPY'];
@@ -161,6 +162,7 @@ export default function SettingsPage() {
       </div>
       <ProfileForm />
       <CalendarPrefsCard />
+      <BusinessProfileCard />
       <PasswordForm />
       <SessionsCard />
     </div>

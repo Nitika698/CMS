@@ -103,7 +103,7 @@ export default function LinkedPanel({ campaign, locked, onChanged }) {
         )}
       </Card>
 
-      <Card title="Invoices" description="Money billed for this campaign.">
+      <Card title="Invoices" description="Money billed for this campaign." action={!locked && <Link to={`/payments/new?client=${campaign.client.id}&campaign=${campaign.id}`} className="text-sm font-medium text-brand-700 hover:underline">New invoice</Link>}>
         {invoices.length === 0 ? <Empty>No invoices for this campaign yet.</Empty> : (
           <>
             <ul className="divide-y divide-slate-100">
@@ -111,7 +111,7 @@ export default function LinkedPanel({ campaign, locked, onChanged }) {
                 const st = INVOICE_STATUS[i.displayStatus] ?? { label: i.displayStatus, tone: 'neutral' };
                 return (
                   <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-                    <span className="font-medium text-slate-900">{i.number}</span>
+                    <Link to={`/payments/${i.id}`} className="font-medium text-slate-900 hover:text-brand-700 hover:underline">{i.number}</Link>
                     <span className="flex items-center gap-3">
                       <span className="tabular-nums text-slate-700">{formatMoney(i.totalMinor, i.currency)}</span>
                       {i.balanceMinor > 0 && <span className="text-xs text-slate-500">{formatMoney(i.balanceMinor, i.currency)} outstanding</span>}

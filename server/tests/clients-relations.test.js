@@ -96,13 +96,13 @@ describe('campaigns are read through the reference, never stored on the brand', 
       const { token } = await signUp();
       const id = await newClient(token);
       const before = (await clients.get(token, id)).body.data.summary.modules;
-      assert.deepEqual([before.campaigns.ready, before.payments.ready], [true, false]); // Campaigns shipped; Payments has not
+      assert.deepEqual([before.campaigns.ready, before.payments.ready], [true, true]); // both modules have shipped
       assert.equal((await clients.campaigns(token, id)).body.available, true);
-      assert.equal((await clients.invoices(token, id)).body.available, false);
-      MODULES.campaigns.ready = false;
-      MODULES.payments.ready = true;
-      assert.equal((await clients.campaigns(token, id)).body.available, false);
       assert.equal((await clients.invoices(token, id)).body.available, true);
+      MODULES.campaigns.ready = false;
+      MODULES.payments.ready = false;
+      assert.equal((await clients.campaigns(token, id)).body.available, false);
+      assert.equal((await clients.invoices(token, id)).body.available, false);
     });
   });
 });

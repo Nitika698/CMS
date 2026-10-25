@@ -8,11 +8,11 @@ export const SOCIAL_LABEL = { instagram: 'Instagram', youtube: 'YouTube', tiktok
 export const CAMPAIGN_STATUS_LABEL = { proposed: 'Proposed', negotiating: 'Negotiating', confirmed: 'Confirmed', in_progress: 'In progress', delivered: 'Delivered', completed: 'Completed', cancelled: 'Cancelled' };
 export const INVOICE_STATUS = {
   draft: { label: 'Draft', tone: 'neutral' },
-  sent: { label: 'Sent', tone: 'info' },
+  sent: { label: 'Issued', tone: 'info' },
   partially_paid: { label: 'Partially paid', tone: 'warning' },
   paid: { label: 'Paid', tone: 'success' },
   overdue: { label: 'Overdue', tone: 'danger' },
-  void: { label: 'Void', tone: 'neutral' },
+  void: { label: 'Cancelled', tone: 'neutral' },
 };
 
 export const SORT_OPTIONS = [

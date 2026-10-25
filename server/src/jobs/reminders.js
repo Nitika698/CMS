@@ -10,6 +10,9 @@ import { Post } from '../modules/posts/post.model.js';
 import { OPEN_TASK } from '../modules/tasks/task.constants.js';
 import { reminderReference } from '../modules/tasks/task.logic.js';
 import { Task } from '../modules/tasks/task.model.js';
+import { Invoice } from '../modules/invoices/invoice.model.js';
+import { Payment } from '../modules/invoices/payment.model.js';
+import { money } from '../modules/invoices/invoice.render.js';
 import { User } from '../modules/users/user.model.js';
 
 const MIN = 60_000;
@@ -32,7 +35,7 @@ const human = (minutes) => {
  * `now` is injectable for tests. Reminders are IN-APP only. Nothing here posts to any network.
  */
 export async function runReminderSweep(now = new Date()) {
-  const stats = { postReminders: 0, postsReady: 0, deadlineReminders: 0, followUpReminders: 0, campaignReminders: 0, taskReminders: 0, taskOverdue: 0 };
+  const stats = { postReminders: 0, postsReady: 0, deadlineReminders: 0, followUpReminders: 0, campaignReminders: 0, taskReminders: 0, taskOverdue: 0, invoiceReminders: 0, invoiceOverdue: 0 };
 
   // ---- 1. reminders before a scheduled post (offsets chosen per post)
   const upcoming = await Post.find({
@@ -231,6 +234,56 @@ export async function runReminderSweep(now = new Date()) {
         dedupeKey: `task:${t._id}:overdue:${t.dueAt.getTime()}`,
       });
       if (created) stats.taskOverdue += 1;
+    }
+  }
+
+  // ---- 7. invoices: lead-time reminders before the END of the due day, then one notice when an unpaid balance turns overdue.
+  // Only issued invoices with money still owed. Paying (or cancelling) before the time cancels the notice. Reminders are in-app only.
+  const invoices = await Invoice.find({
+    status: 'sent',
+    dueDate: { $gte: new Date(now.getTime() - 4 * DAY), $lt: new Date(now.getTime() + 33 * DAY) },
+  })
+    .select('owner number client currency totalMinor dueDate')
+    .lean();
+  if (invoices.length) {
+    const paidRows = await Payment.aggregate([{ $match: { invoice: { $in: invoices.map((i) => i._id) } } }, { $group: { _id: '$invoice', paid: { $sum: '$amountMinor' } } }]);
+    const paid = new Map(paidRows.map((r) => [String(r._id), r.paid]));
+    for (const inv of invoices) {
+      const balance = inv.totalMinor - (paid.get(String(inv._id)) ?? 0);
+      if (balance <= 0) continue;
+      const user = await userFor(inv.owner);
+      if (!user) continue;
+      const tz = user.timezone || 'UTC';
+      const day = formatLocal(inv.dueDate, tz).date;
+      const [y, m, d] = day.split('-').map(Number);
+      const dueEnd = zonedMidnight(y, m, d + 1, tz).getTime();
+      const owed = `${money(balance, inv.currency)} still owed`;
+      if (dueEnd > now.getTime()) {
+        for (const offset of user.calendarPrefs?.deadlineReminderOffsets ?? [1440]) {
+          if (dueEnd - offset * MIN > now.getTime()) continue;
+          const created = await notifyOnce({
+            owner: inv.owner,
+            type: 'invoice_due',
+            title: `Invoice ${inv.number} due in ${human(Math.max(1, Math.round((dueEnd - now.getTime()) / MIN)))}`,
+            body: `Due ${day}. ${owed}.`,
+            entity: { kind: 'invoice', id: inv._id },
+            localDate: day,
+            dedupeKey: `invoice:${inv._id}:remind${offset}:${inv.dueDate.getTime()}`,
+          });
+          if (created) stats.invoiceReminders += 1;
+        }
+      } else if (dueEnd >= now.getTime() - 3 * DAY) {
+        const created = await notifyOnce({
+          owner: inv.owner,
+          type: 'invoice_overdue',
+          title: `Invoice ${inv.number} is overdue`,
+          body: `Was due ${day}. ${owed}.`,
+          entity: { kind: 'invoice', id: inv._id },
+          localDate: day,
+          dedupeKey: `invoice:${inv._id}:overdue:${inv.dueDate.getTime()}`,
+        });
+        if (created) stats.invoiceOverdue += 1;
+      }
     }
   }
   return stats;

@@ -6,10 +6,10 @@ const { ObjectId } = mongoose.Schema.Types;
 const notificationSchema = new mongoose.Schema(
   {
     owner: { type: ObjectId, ref: 'User', required: true },
-    type: { type: String, enum: ['post_reminder', 'post_ready', 'deadline_reminder', 'campaign_deadline', 'followup_reminder', 'task_reminder', 'task_overdue'], required: true },
+    type: { type: String, enum: ['post_reminder', 'post_ready', 'deadline_reminder', 'campaign_deadline', 'followup_reminder', 'task_reminder', 'task_overdue', 'invoice_due', 'invoice_overdue'], required: true },
     title: { type: String, required: true, maxlength: 200 },
     body: { type: String, maxlength: 500 },
-    entity: { kind: { type: String, enum: ['post', 'content', 'client', 'campaign', 'task'], required: true }, id: { type: ObjectId, required: true } },
+    entity: { kind: { type: String, enum: ['post', 'content', 'client', 'campaign', 'task', 'invoice'], required: true }, id: { type: ObjectId, required: true } },
     localDate: String, // YYYY-MM-DD in the user's timezone, so the UI can open the right calendar day
     // One notification per (thing, reminder, scheduled time): sweeps are idempotent and rescheduling re-arms reminders.
     dedupeKey: { type: String, required: true },

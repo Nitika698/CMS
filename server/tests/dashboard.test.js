@@ -38,22 +38,24 @@ let invNo = 0;
 const invoice = (o, cl, currency, totalMinor, status, dueDate) => Invoice.create({ owner: o, client: cl._id, number: `INV-${++invNo}`, currency, totalMinor, status, dueDate });
 const pay = (o, inv, amountMinor, paidAt) => Payment.create({ owner: o, invoice: inv._id, amountMinor, currency: inv.currency, paidAt });
 
-describe('modules that are not built yet', () => {
-  test('sections whose module is not built are "unavailable" (not zero) and carry no metrics; Content, Calendar, Brands, Campaigns and Tasks are live', async () => {
+describe('module availability', () => {
+  test('with every module built, every section reports real (possibly empty) data', async () => {
     const { token } = await signUp();
     const res = await request(app).get('/api/v1/dashboard').set(bearer(token));
     assert.equal(res.status, 200);
     const sections = Object.entries(res.body.sections);
     assert.equal(sections.length, 7);
-    for (const [key, s] of sections) {
-      if (['contentPipeline', 'upcomingPosts', 'recentActivity', 'campaigns', 'reviews', 'tasks'].includes(key)) {
-        assert.equal(s.state, 'ok'); // the Content, Calendar, Brands (CRM), Campaigns and Tasks modules are implemented
-        continue;
-      }
-      assert.equal(s.state, 'unavailable', key);
-      assert.ok(s.module && s.phase, key);
-      assert.deepEqual(Object.keys(s).sort(), ['label', 'module', 'phase', 'state'], `${key} must not contain numbers`);
-    }
+    for (const [key, s] of sections) assert.equal(s.state, 'ok', key);
+  });
+
+  test('a module that is switched off is "unavailable" (not zero) and carries no metrics', async () => {
+    const a = await signUp();
+    const off = { ...ALL, payments: { ...ALL.payments, ready: false } };
+    const d = await dash(a.user, { modules: off });
+    assert.equal(d.sections.payments.state, 'unavailable');
+    assert.ok(d.sections.payments.module && d.sections.payments.phase);
+    assert.deepEqual(Object.keys(d.sections.payments).sort(), ['label', 'module', 'phase', 'state'], 'must not contain numbers');
+    assert.equal(d.sections.contentPipeline.state, 'ok');
   });
 
   test('requires authentication', async () => {

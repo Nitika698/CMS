@@ -8,6 +8,7 @@ import { ContentEvent } from '../content/content-event.model.js';
 import { Content } from '../content/content.model.js';
 import { PLATFORMS, STATUS_LABELS as CONTENT_STATUS_LABELS, TYPES } from '../content/content.constants.js';
 import { invoiceTotals, invoicesWithPaid } from '../invoices/invoice.aggregates.js';
+import { displayStatusOf } from '../invoices/invoice.logic.js';
 import { Invoice } from '../invoices/invoice.model.js';
 import { Task } from '../tasks/task.model.js';
 import {
@@ -279,8 +280,7 @@ async function linked(user, campaign, now) {
     communications: communications.map((c) => ({ id: String(c._id), clientId: String(c.client), channel: c.channel, direction: c.direction, subject: c.subject ?? null, occurredAt: c.occurredAt })),
     invoices: invoiceRows.map((r) => {
       const balance = Math.max(0, r.totalMinor - r.paidMinor);
-      let displayStatus = r.status;
-      if (r.status === 'sent') displayStatus = balance === 0 ? 'paid' : r.dueDate && r.dueDate < todayStart ? 'overdue' : r.paidMinor > 0 ? 'partially_paid' : 'sent';
+      const displayStatus = displayStatusOf(r, r.paidMinor, todayStart);
       return { id: String(r._id), number: r.number, status: r.status, displayStatus, currency: r.currency, totalMinor: r.totalMinor, paidMinor: r.paidMinor, balanceMinor: r.status === 'sent' ? balance : 0, issueDate: r.issueDate ?? null, dueDate: r.dueDate ?? null };
     }),
     invoiceTotals: totals.map((r) => ({ currency: r._id, invoiced: r.invoiced, collected: r.collected, outstanding: r.outstanding, overdue: r.overdue })).sort((a, b) => a.currency.localeCompare(b.currency)),

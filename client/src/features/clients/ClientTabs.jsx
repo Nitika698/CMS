@@ -345,7 +345,7 @@ export function InvoicesTab({ clientId }) {
   if (data.data.length === 0) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white">
-        {data.available ? <EmptyState icon={Receipt} title="No invoices yet" description="Invoices you raise for this brand will be listed here with what has been paid." /> : <Unavailable what="Invoices for this brand" phase={data.phase} />}
+        {data.available ? <EmptyState icon={Receipt} title="No invoices yet" description="Invoices you raise for this brand will be listed here with what has been paid." action={<Link to={`/payments/new?client=${clientId}`}><Button icon={Plus} tabIndex={-1}>New invoice</Button></Link>} /> : <Unavailable what="Invoices for this brand" phase={data.phase} />}
       </div>
     );
   }
@@ -372,7 +372,7 @@ export function InvoicesTab({ clientId }) {
           <tbody className="divide-y divide-slate-100">
             {data.data.map((i) => (
               <tr key={i.id}>
-                <td className="px-4 py-3"><Link to="/payments" className="font-medium text-brand-700 hover:underline">{i.number}</Link>{i.campaign?.title && <span className="block text-xs text-slate-500">{i.campaign.title}</span>}</td>
+                <td className="px-4 py-3"><Link to={`/payments/${i.id}`} className="font-medium text-brand-700 hover:underline">{i.number}</Link>{i.campaign?.title && <span className="block text-xs text-slate-500">{i.campaign.title}</span>}</td>
                 <td className="px-4 py-3"><Badge tone={INVOICE_STATUS[i.displayStatus]?.tone}>{INVOICE_STATUS[i.displayStatus]?.label ?? i.displayStatus}</Badge></td>
                 <td className="px-4 py-3 text-slate-600">{i.dueDate ? formatDay(i.dueDate) : '—'}</td>
                 <td className="px-4 py-3 tabular-nums">{formatMoney(i.totalMinor, i.currency)}</td>

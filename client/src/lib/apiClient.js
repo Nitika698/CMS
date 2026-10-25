@@ -69,6 +69,31 @@ async function send(path, { method = 'GET', body, signal } = {}) {
 
 let refreshing = null;
 
+/** Fetches a file (the signed-in user's own invoice document) as a Blob, refreshing the session once if needed. */
+export async function download(path) {
+  const attempt = () =>
+    fetch(`${BASE_URL}${path}`, { headers: { 'X-Requested-With': 'cms', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, credentials: 'include' });
+  let res;
+  try {
+    res = await attempt();
+    if (res.status === 401) {
+      await refreshSession();
+      res = await attempt();
+    }
+  } catch {
+    throw new ApiError(0, 'NETWORK_ERROR', 'Cannot reach the server. Is the API running?');
+  }
+  if (!res.ok) {
+    let body = null;
+    try {
+      body = await res.json();
+    } catch { /* not JSON */ }
+    throw new ApiError(res.status, body?.error?.code ?? 'ERROR', body?.error?.message ?? res.statusText, body);
+  }
+  const name = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? 'invoice.html';
+  return { blob: await res.blob(), name };
+}
+
 /** Single-flight: concurrent callers share one refresh request (the server rotates the cookie each time). */
 export function refreshSession() {
   refreshing ??= (async () => {

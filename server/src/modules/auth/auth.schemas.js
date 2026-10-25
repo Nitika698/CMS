@@ -44,8 +44,27 @@ const calendarPrefs = z
   .strict()
   .refine((v) => Object.keys(v).length > 0, 'Provide at least one calendar setting');
 
+const bText = (max) => z.string().trim().max(max, `At most ${max} characters`);
+const businessProfile = z
+  .object({
+    businessName: bText(120),
+    email: z.union([z.literal(''), z.string().trim().toLowerCase().email('Enter a valid email').max(254)]),
+    phone: bText(30),
+    website: bText(200),
+    address: bText(500),
+    taxIdLabel: bText(20),
+    taxId: bText(60),
+    paymentInstructions: bText(1000),
+    invoiceNotes: bText(1000),
+    invoicePrefix: z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{1,10}$/, 'Use 1-10 letters, numbers or dashes'),
+    paymentTermsDays: z.number().int('Whole days only').min(0).max(365),
+  })
+  .partial()
+  .strict()
+  .refine((v) => Object.keys(v).length > 0, 'Provide at least one business detail');
+
 export const updateProfileSchema = z
-  .object({ name: name.optional(), timezone: timezone.optional(), defaultCurrency: currency.optional(), calendarPrefs: calendarPrefs.optional() })
+  .object({ name: name.optional(), timezone: timezone.optional(), defaultCurrency: currency.optional(), calendarPrefs: calendarPrefs.optional(), businessProfile: businessProfile.optional() })
   .strict()
   .refine((v) => Object.keys(v).length > 0, 'Provide at least one field to update');
 

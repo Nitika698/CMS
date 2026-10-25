@@ -26,7 +26,7 @@ describe('reminders before a scheduled post', () => {
 
   test('each reminder fires at its lead time, exactly once', async () => {
     const { a } = await setup();
-    assert.deepEqual(await runReminderSweep(at('2040-06-14T12:29:59Z')), { postReminders: 0, postsReady: 0, deadlineReminders: 0, followUpReminders: 0, campaignReminders: 0, taskReminders: 0, taskOverdue: 0 }, 'one second early');
+    assert.deepEqual(await runReminderSweep(at('2040-06-14T12:29:59Z')), { postReminders: 0, postsReady: 0, deadlineReminders: 0, followUpReminders: 0, campaignReminders: 0, taskReminders: 0, taskOverdue: 0, invoiceReminders: 0, invoiceOverdue: 0 }, 'one second early');
     assert.equal(await count(a.user.id), 0);
 
     assert.equal((await runReminderSweep(at('2040-06-14T12:30:00Z'))).postReminders, 1);

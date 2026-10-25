@@ -11,6 +11,20 @@ const userSchema = new mongoose.Schema(
     failedLoginCount: { type: Number, default: 0, select: false },
     lockedUntil: { type: Date, default: null, select: false },
     lastLoginAt: { type: Date, default: null },
+    // Printed on invoices. Editable at any time; an invoice keeps a copy of these as they were when it was issued.
+    businessProfile: {
+      businessName: { type: String, trim: true, maxlength: 120 },
+      email: { type: String, trim: true, lowercase: true, maxlength: 254 },
+      phone: { type: String, trim: true, maxlength: 30 },
+      website: { type: String, trim: true, maxlength: 200 },
+      address: { type: String, trim: true, maxlength: 500 },
+      taxIdLabel: { type: String, trim: true, maxlength: 20 }, // e.g. GSTIN, VAT no.
+      taxId: { type: String, trim: true, maxlength: 60 },
+      paymentInstructions: { type: String, trim: true, maxlength: 1000 }, // how the brand should pay you (bank details, UPI id, PayPal...)
+      invoiceNotes: { type: String, trim: true, maxlength: 1000 }, // default footer text for new invoices
+      invoicePrefix: { type: String, trim: true, uppercase: true, maxlength: 10, default: 'INV' },
+      paymentTermsDays: { type: Number, min: 0, max: 365, default: 14 },
+    },
     calendarPrefs: {
       // Minutes before a scheduled post to remind (in-app). Applied to new scheduled posts that don't choose their own.
       defaultReminderOffsets: { type: [Number], default: [60] },
@@ -22,6 +36,14 @@ const userSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+export function toPublicBusinessProfile(b = {}) {
+  return {
+    businessName: b.businessName ?? '', email: b.email ?? '', phone: b.phone ?? '', website: b.website ?? '', address: b.address ?? '',
+    taxIdLabel: b.taxIdLabel ?? '', taxId: b.taxId ?? '', paymentInstructions: b.paymentInstructions ?? '', invoiceNotes: b.invoiceNotes ?? '',
+    invoicePrefix: b.invoicePrefix || 'INV', paymentTermsDays: b.paymentTermsDays ?? 14,
+  };
+}
+
 /** The ONLY shape in which a user is ever sent to a client. Allow-list, not block-list. */
 export function toPublicUser(u) {
   return {
@@ -31,6 +53,7 @@ export function toPublicUser(u) {
     timezone: u.timezone,
     defaultCurrency: u.defaultCurrency,
     lastLoginAt: u.lastLoginAt,
+    businessProfile: toPublicBusinessProfile(u.businessProfile),
     calendarPrefs: {
       defaultReminderOffsets: u.calendarPrefs?.defaultReminderOffsets ?? [60],
       deadlineReminderOffsets: u.calendarPrefs?.deadlineReminderOffsets ?? [1440],
