@@ -18,6 +18,7 @@ export const clientsApi = {
   remove: (id) => api(`/clients/${id}`, { method: 'DELETE' }),
   campaigns: (id, signal) => api(`/clients/${id}/campaigns`, { signal }),
   invoices: (id, signal) => api(`/clients/${id}/invoices`, { signal }),
+  allDiscussions: (params, signal) => api(`/communications${qs(params)}`, { signal }),
   discussions: (id, params, signal) => api(`/clients/${id}/communications${qs(params)}`, { signal }),
   addDiscussion: (id, body) => api(`/clients/${id}/communications`, { method: 'POST', body }),
   updateDiscussion: (id, body) => api(`/communications/${id}`, { method: 'PATCH', body }),

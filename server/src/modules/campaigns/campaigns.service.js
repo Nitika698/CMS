@@ -24,7 +24,6 @@ const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const tzOf = (user) => user.timezone || 'UTC';
 const invalid = (path, message) => new AppError(400, 'VALIDATION_ERROR', 'Some fields are invalid', [{ path, message }]);
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
-const id = (v) => (v ? String(v) : null);
 
 /** "2026-10-31" -> local midnight of that day in the user's timezone. */
 function dayToDate(s, tz) {
@@ -251,7 +250,8 @@ export async function listCampaigns(user, q, now = new Date()) {
   const page = items.slice((q.page - 1) * q.limit, q.page * q.limit);
   return {
     data: page.map(({ view }) => {
-      const { statusHistory, brief, objectives, requirements, review, notes, next, coverage, ...row } = view; // list rows are summaries
+      const row = { ...view }; // list rows are summaries: drop the heavy detail fields
+      for (const k of ['statusHistory', 'brief', 'objectives', 'requirements', 'review', 'notes', 'next', 'coverage']) delete row[k];
       return row;
     }),
     meta: { page: q.page, limit: q.limit, total, pages: Math.max(1, Math.ceil(total / q.limit)), needAttention: items.filter((i) => i.derived.flags.some((f) => f.severity !== 'info')).length },

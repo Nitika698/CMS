@@ -77,6 +77,8 @@ const isProd = parsed.data.NODE_ENV === 'production';
 export const env = {
   ...parsed.data,
   isProd,
+  LOG_LEVEL: parsed.data.LOG_LEVEL ?? (parsed.data.NODE_ENV === 'test' ? 'silent' : 'info'),
+  dbAutoIndex: parsed.data.DB_AUTO_INDEX ?? !isProd,
   cookieSecure: parsed.data.COOKIE_SECURE ?? isProd,
   clientOrigins: parsed.data.CLIENT_ORIGIN.split(',')
     .map((s) => s.trim())

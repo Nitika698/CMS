@@ -14,6 +14,7 @@ import clients from './modules/clients/clients.routes.js';
 import communications from './modules/communications/communications.routes.js';
 import tasks from './modules/tasks/tasks.routes.js';
 import invoices from './modules/invoices/invoices.routes.js';
+import ai from './modules/ai/ai.routes.js';
 
 const router = Router();
 
@@ -32,6 +33,7 @@ router.use('/clients', clients);
 router.use('/communications', communications);
 router.use('/tasks', tasks);
 router.use('/invoices', invoices);
+router.use('/ai', ai);
 // Feature modules (content, clients, ...) are mounted here as they are built.
 
 export default router;

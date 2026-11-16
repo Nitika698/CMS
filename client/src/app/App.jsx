@@ -18,6 +18,8 @@ import CampaignsLibraryPage from '../features/campaigns/CampaignsLibraryPage.jsx
 import CampaignFormPage from '../features/campaigns/CampaignFormPage.jsx';
 import CampaignDetailPage from '../features/campaigns/CampaignDetailPage.jsx';
 import TasksPage from '../features/tasks/TasksPage.jsx';
+import CommunicationsPage from '../features/clients/CommunicationsPage.jsx';
+import AssistantPage from '../features/assistant/AssistantPage.jsx';
 import PaymentsPage from '../features/payments/PaymentsPage.jsx';
 import InvoiceFormPage from '../features/payments/InvoiceFormPage.jsx';
 import InvoiceDetailPage from '../features/payments/InvoiceDetailPage.jsx';
@@ -54,11 +56,13 @@ export default function App() {
             <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
             <Route path="/campaigns/:id/edit" element={<CampaignFormPage mode="edit" />} />
             <Route path="/tasks" element={<TasksPage />} />
+            <Route path="/communications" element={<CommunicationsPage />} />
+            <Route path="/ai" element={<AssistantPage />} />
             <Route path="/payments" element={<PaymentsPage />} />
             <Route path="/payments/new" element={<InvoiceFormPage mode="create" />} />
             <Route path="/payments/:id" element={<InvoiceDetailPage />} />
             <Route path="/payments/:id/edit" element={<InvoiceFormPage mode="edit" />} />
-            {NAV_ITEMS.filter((i) => !['/dashboard', '/content', '/calendar', '/brands', '/campaigns', '/tasks', '/payments'].includes(i.path)).map((item) => (
+            {NAV_ITEMS.filter((i) => !['/dashboard', '/content', '/calendar', '/brands', '/campaigns', '/tasks', '/payments', '/ai', '/communications'].includes(i.path)).map((item) => (
               <Route key={item.path} path={`${item.path}/*`} element={<PlaceholderPage item={item} />} />
             ))}
             <Route path="/settings" element={<SettingsPage />} />

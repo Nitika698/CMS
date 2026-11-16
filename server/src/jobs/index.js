@@ -1,11 +1,12 @@
 import { env } from '../config/env.js';
+import { log as structured } from '../lib/logger.js';
 import { runReminderSweep } from './reminders.js';
 
 /**
  * Starts the in-process reminder job. It never overlaps itself, and it is safe if several servers run it
  * (every effect is idempotent). Returns a function that stops it.
  */
-export function startJobs({ log = console } = {}) {
+export function startJobs({ log = { log: (m) => structured.info(m), error: (m) => structured.error(m) } } = {}) {
   let running = false;
   const tick = async () => {
     if (running) return;

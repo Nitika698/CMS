@@ -1,18 +1,19 @@
 import { env } from './config/env.js';
 import { connectDb, disconnectDb } from './config/db.js';
 import { createApp } from './app.js';
+import { log } from './lib/logger.js';
 import { startJobs } from './jobs/index.js';
 
 const app = createApp();
 const server = app.listen(env.PORT, () => {
-  console.log(`[api] listening on http://localhost:${env.PORT} (${env.NODE_ENV})`);
+  log.info('api listening', { port: env.PORT, environment: env.NODE_ENV });
 });
 
 connectDb();
 const stopJobs = startJobs();
 
 function shutdown(signal) {
-  console.log(`[api] ${signal} received, shutting down`);
+  log.info('shutting down', { signal });
   stopJobs();
   server.close(async () => {
     await disconnectDb();

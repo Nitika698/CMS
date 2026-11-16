@@ -81,7 +81,7 @@ export const NAV_ITEMS = [
     label: 'AI Assistant',
     icon: Sparkles,
     phase: 'Roadmap P9',
-    description: 'Suggestions for captions, follow-ups and planning.',
+    description: 'Ideas, writing help, plans and answers about your own data. Suggestions only.',
     planned: ['Caption and hashtag ideas', 'Summaries of brand discussions', 'Draft follow-up messages'],
   },
 ];

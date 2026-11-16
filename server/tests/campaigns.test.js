@@ -376,7 +376,6 @@ describe('relationships and ownership', () => {
   test('an archived brand cannot receive new campaigns', async () => {
     const a = await signUp();
     const client = await newClient(a.token);
-    const { request: _r } = {};
     const { clients } = await import('./helpers/clients.js');
     await clients.archive(a.token, client);
     const res = await camps.create(a.token, { client });

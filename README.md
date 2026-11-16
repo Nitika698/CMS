@@ -35,6 +35,8 @@ npm run dev:client   # client only
 | `npm run build` | Production build of the client into `client/dist` |
 | `npm run check` | lint + test + build |
 | `npm start` | Start the API in production mode |
+| `npm run db:indexes -w server` | Create/update MongoDB indexes (add `-- --dry-run` to preview). Run on every production deploy |
+| `npm run db:indexes -w server` | Create/update MongoDB indexes (add `-- --dry-run` to preview). Run on every production deploy |
 
 ## Environment variables
 **`server/.env`** (see `server/.env.example`)
@@ -55,6 +57,15 @@ npm run dev:client   # client only
 | `AUTH_RATE_LIMIT_WINDOW_MS` / `AUTH_RATE_LIMIT_MAX` | Failed register/login/password-change attempts allowed per IP | `900000` / `10` |
 | `CALENDAR_CONFLICT_WINDOW_MINUTES` | Same-platform posts closer than this need confirmation | `30` |
 | `REMINDER_SWEEP_SECONDS` | How often the in-process reminder job runs | `60` |
+| `LOG_LEVEL` | `silent`, `error`, `warn` or `info`; JSON log lines carrying a request id | `info` |
+| `DB_AUTO_INDEX` | Build indexes on startup. Off in production: run `npm run db:indexes` instead | on outside production |
+| `LOG_LEVEL` | `silent`, `error`, `warn` or `info`; JSON log lines with a request id | `info` |
+| `DB_AUTO_INDEX` | Build indexes on startup. Off in production: use `npm run db:indexes` | on outside production |
+| `AI_API_KEY` | Key from your AI provider. **No key = AI is off.** Server-only; never sent to the browser | _(unset)_ |
+| `AI_ENABLED` | `false` switches AI off even when a key is set | on when a key exists |
+| `AI_PROVIDER`, `AI_MODEL`, `AI_BASE_URL` | Which adapter, model and API address to use | `anthropic`, `claude-sonnet-5-5`, provider default |
+| `AI_MAX_OUTPUT_TOKENS`, `AI_TIMEOUT_MS` | Most tokens per model call (100-4000) and how long to wait | `1200`, `30000` |
+| `AI_DAILY_REQUEST_LIMIT`, `AI_RATE_LIMIT_PER_MINUTE` | Per-user caps on AI requests (per UTC day, per minute) | `100`, `10` |
 
 **`client/.env`** (public values only; anything `VITE_*` is visible in the browser)
 | Variable | Purpose | Default |
@@ -96,6 +107,11 @@ The server refuses to start with an invalid environment and prints which variabl
 | GET / POST | `/tasks`, `/tasks/meta`, `/tasks/summary` | List (search, status, priority, due bucket, campaign, brand, content, assignee, archived, sort, pagination) and create tasks; `summary` returns overdue / due today / upcoming counts and lists |
 | GET / PATCH / DELETE | `/tasks/:id` | Owner-scoped. PATCH edits (send `version` to detect stale edits); DELETE removes the task for good |
 | POST | `/tasks/:id/complete`, `/reopen`, `/transition`, `/archive`, `/restore` | Mark done / reopen, move between To do, Doing, Done and Cancelled, archive and restore |
+| GET | `/communications` | Saved discussions across all your brands, newest first, each with its brand. Filters: `q`, `client`, `channel`, `direction`, `campaign`, `from`, `to`; paginated |
+| GET | `/ai/status` | Whether AI is on (never the key), model, limits and today's usage |
+| POST | `/ai/ideas`, `/ai/copy`, `/ai/campaign-plan`, `/ai/summarize-communications`, `/ai/task-priorities`, `/ai/ask` | The six assistant features. Each returns `{ data, actions, meta }`; `meta` labels the output as an AI suggestion |
+| GET | `/ai/actions?status=` | Suggested changes waiting for your decision |
+| POST | `/ai/actions/:id/confirm`, `/dismiss` | Apply or discard one suggested change. Nothing is applied any other way |
 | GET / POST | `/invoices`, `/invoices/meta`, `/invoices/context?campaign=` | List (search, status, brand, campaign, currency, due range, sort, pagination, per-currency totals) and create draft invoices; `context` shows a campaign's agreed fee next to what is already invoiced |
 | GET / PATCH / DELETE | `/invoices/:id` | Detail with lines, payments and the actions currently allowed; edit (send `version`); delete drafts only |
 | POST | `/invoices/:id/issue`, `/revert`, `/cancel` | Draft → issued (freezes amounts, copies your details), issued → draft and issued → cancelled (both only while no payment is recorded) |
@@ -163,6 +179,23 @@ Sidebar **Payments**. This is **invoice tracking, not payment processing**: CMS 
 - **Downloadable invoice.** One self-contained HTML file with your details, the brand's, invoice number, dates, lines, tax, totals, payments received, balance due and payment instructions; every typed value is escaped and the file has no scripts or external requests. Open it and print to PDF from the browser. Drafts and cancelled invoices are watermarked.
 - **Reminders** (in-app, from the same server job): one notice before the end of the due day using your deadline lead times, and one when an unpaid balance turns overdue. Paid, cancelled and draft invoices send nothing.
 
+### AI assistant
+Sidebar **AI Assistant** (`/ai`). It calls an external language model **from the server**; the browser never sees a key or talks to the provider. The provider sits behind one small contract (`server/src/modules/ai/ai.provider.js`), so changing vendor means writing one adapter (`providers/`) and listing its name; nothing else changes. Only the `anthropic` adapter ships today.
+
+**Features:** (1) content ideas from niche, platform, audience and goals; (2) hooks, captions, calls to action and hashtags; (3) a brief (pasted, or one of your campaigns) turned into a content plan and deliverable checklist; (4) a summary of a brand's saved discussions with proposed action items; (5) suggested task priorities from deadlines and campaign importance; (6) questions about your own data ("what is due this week?", "which invoices are overdue?").
+
+**Setup and disabling.** Add `AI_API_KEY` to `server/.env` and restart. With no key (or `AI_ENABLED=false`) AI is simply off: `/ai/status` says why, every AI endpoint answers `503 AI_DISABLED`, the page explains how to enable it, and the rest of CMS is unaffected. Remove the key and restart to turn it off again.
+
+**Suggestions, not facts.** Every answer is labelled as an AI suggestion that can be wrong. The model's replies are parsed against strict schemas, cut to fixed lengths and counts, and anything unrecognised is ignored.
+
+**Nothing changes without your confirmation.** The model has no write tools. When a feature proposes something (add a deliverable, add a task, change a task's priority) the server stores a validated *suggested change*; it is applied only when you press Confirm, through the same services and rules as the normal screens, exactly once. The complete list of things AI can propose is `create_task`, `set_task_priority` and `create_deliverables`. There is no way for it to change a status, send a message, schedule content or modify an invoice or payment.
+
+**Questions about your data** use five read-only tools (tasks, upcoming deadlines, outstanding invoices, campaigns, recent discussions). Permissions are enforced by the server, never by the model: tools take no user or id argument, always run as the signed-in user, validate and clamp their arguments, return only the minimum fields (titles, dates, statuses, formatted amounts; no contact details, payment instructions or database ids), cap rows and size, and the loop is limited to four rounds. Saved notes and briefs are fenced as untrusted data in the prompt, but even a model that obeyed injected text could not reach anyone else's records or change anything.
+
+**Privacy.** What you type, and the records needed for your request, are sent to the AI provider under its terms. Discussion text is shortened before sending. Use of AI is optional.
+
+**Limits and costs to consider.** Providers bill per token (input and output), and prices differ by model and change, so check your provider's current pricing. CMS bounds spend with: `AI_MAX_OUTPUT_TOKENS` per call, per-user `AI_DAILY_REQUEST_LIMIT` and `AI_RATE_LIMIT_PER_MINUTE` (429 when exceeded), capped input sizes, at most four tool rounds per question, and a usage record per user per day (requests and tokens, shown in `/ai/status`). Questions about your data cost the most because a question can involve several model calls; ideas and copy are a single call. Choose a smaller model with `AI_MODEL` to reduce cost. Failed validation and refused requests are not charged against your quota.
+
 ### Brands & clients (CRM)
 Sidebar **Brands**. Each record holds contact people (exactly one primary), website and social links, industry and category, contact preferences, collaboration notes, negotiated reference rates (integer minor units + currency), payment terms, exclusivity/usage terms, and a follow-up date. Everything is owner-scoped; another user's id returns 404.
 - **Nothing is duplicated.** Campaigns, invoices and payments are never copied onto the brand. The detail page reads them through references (`client` on campaigns and invoices), and `lastContact`, discussion counts, active-campaign counts and agreed/invoiced/collected/outstanding figures are **derived** on every request. The money rules are shared with the dashboard (`invoice.aggregates.js`), so both screens always agree. Totals are per currency, never summed across currencies.
@@ -210,8 +243,17 @@ client/src/
 docs/PLAN.md               requirements, data model, API plan, roadmap
 ```
 
+## Production, security and operations
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): exact deployment steps for the web app, API, database and file storage, the full environment reference and a post-deploy checklist.
+- [docs/SECURITY.md](docs/SECURITY.md): security review, what was verified, and the known risks.
+- [docs/OPERATIONS.md](docs/OPERATIONS.md): logging, monitoring, backups, recovery and routine tasks.
+
 ## Not implemented yet (intentionally)
-Email verification / password reset, the tasks and payments modules, a full communications inbox (saved discussions are managed from each brand), global search and AI features. The search entry point and the unbuilt module pages are labelled placeholders showing their planned roadmap phase.
+- **Email verification, password reset, MFA.** Accounts cannot be recovered if the password is forgotten.
+- **Social-network publishing.** No Instagram/YouTube/TikTok integration exists. Scheduled posts are **reminders**: the app notifies you, you publish yourself, then mark the post published. The `publish-via-platform` endpoint answers `501 NOT_IMPLEMENTED` on purpose.
+- **Email or messaging.** CMS never sends email or messages to brands. Communication logs are notes you write about conversations that happened elsewhere. Notifications are in-app only.
+- **Payment processing.** Payments are records of money received elsewhere; CMS does not charge anyone.
+- **Global search** and browser (UI) end-to-end tests. The search entry point is a labelled placeholder.
 
 ## Troubleshooting
 - **Port already in use:** change `PORT` in `server/.env` and `DEV_API_TARGET` in `client/.env`. Vite automatically picks another port if 5173 is taken.

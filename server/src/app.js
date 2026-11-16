@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import { env } from './config/env.js';
 import routes from './routes.js';
+import { requestLog } from './middleware/requestLog.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
 
 export function createApp() {
@@ -12,6 +13,7 @@ export function createApp() {
   app.disable('x-powered-by');
   if (env.TRUST_PROXY > 0) app.set('trust proxy', env.TRUST_PROXY);
 
+  app.use(requestLog);
   app.use(helmet());
   app.use(
     cors({

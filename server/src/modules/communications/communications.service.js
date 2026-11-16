@@ -3,6 +3,7 @@ import { AppError } from '../../lib/errors.js';
 import { isObjectId, notFound } from '../../lib/scoped.js';
 import { formatLocal, localToInstant, zonedMidnight } from '../../lib/timezone.js';
 import { Campaign } from '../campaigns/campaign.model.js';
+import { Client } from '../clients/client.model.js';
 import { findOwnedClient } from '../clients/clients.service.js';
 import { Communication } from './communication.model.js';
 
@@ -104,10 +105,9 @@ export async function createDiscussion(user, clientId, input, now = new Date()) 
   return { data: (await present(user, [doc], client))[0], warnings: when.warnings };
 }
 
-export async function listDiscussions(user, clientId, q) {
-  const client = await findOwnedClient(user.id, clientId);
+function discussionFilter(user, base, q) {
   const tz = tzOf(user);
-  const where = { owner: oid(user.id), client: client._id, archivedAt: null };
+  const where = { owner: oid(user.id), archivedAt: null, ...base };
   if (q.channel?.length) where.channel = { $in: q.channel };
   if (q.direction) where.direction = q.direction;
   if (q.campaign) where.campaign = oid(q.campaign);
@@ -126,6 +126,12 @@ export async function listDiscussions(user, clientId, q) {
     const rx = new RegExp(escapeRegex(q.q), 'i');
     where.$or = [{ subject: rx }, { body: rx }];
   }
+  return where;
+}
+
+export async function listDiscussions(user, clientId, q) {
+  const client = await findOwnedClient(user.id, clientId);
+  const where = discussionFilter(user, { client: client._id }, q);
   const [total, rows] = await Promise.all([
     Communication.countDocuments(where),
     Communication.find(where).sort({ occurredAt: -1, _id: -1 }).skip((q.page - 1) * q.limit).limit(q.limit),
@@ -134,6 +140,20 @@ export async function listDiscussions(user, clientId, q) {
     data: await present(user, rows, client),
     meta: { page: q.page, limit: q.limit, total, pages: Math.max(1, Math.ceil(total / q.limit)) },
   };
+}
+
+/** Saved discussions across ALL of the user's brands, newest first, each with its brand. Optional filter by one brand. */
+export async function listAllDiscussions(user, q) {
+  const base = q.client ? { client: (await findOwnedClient(user.id, q.client))._id } : {};
+  const where = discussionFilter(user, base, q);
+  const [total, rows] = await Promise.all([
+    Communication.countDocuments(where),
+    Communication.find(where).sort({ occurredAt: -1, _id: -1 }).skip((q.page - 1) * q.limit).limit(q.limit),
+  ]);
+  const brands = await Client.find({ _id: { $in: [...new Set(rows.map((r) => String(r.client)))] }, owner: user.id }).select('name archivedAt').lean();
+  const byId = new Map(brands.map((b) => [String(b._id), b]));
+  const data = (await present(user, rows, null)).map((d) => ({ ...d, client: { id: d.clientId, name: byId.get(d.clientId)?.name ?? null, archived: !!byId.get(d.clientId)?.archivedAt } }));
+  return { data, meta: { page: q.page, limit: q.limit, total, pages: Math.max(1, Math.ceil(total / q.limit)) } };
 }
 
 export async function getDiscussion(user, id) {

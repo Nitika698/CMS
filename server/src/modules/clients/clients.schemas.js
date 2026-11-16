@@ -133,7 +133,6 @@ export const listClientsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
-// ---- saved discussions
 const instant = z
   .string()
   .datetime({ offset: true, message: 'Use a full date-time with a time zone offset (or send occurredLocal)' })
@@ -179,3 +178,6 @@ export const listDiscussionsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(100_000).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
+/** Same filters across every brand, with an optional single brand. */
+export const listAllDiscussionsQuerySchema = listDiscussionsQuerySchema.extend({ client: objectId.optional() });
+
